@@ -1,0 +1,129 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / go ${{ matrix.go }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        go: [1.22.x, stable]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: gofmt
+        shell: bash
+        run: |
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then
+            echo "gofmt needed on:"
+            echo "$out"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        id: gotest
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -json ./... | tee test-events.jsonl
+          echo "jsonl=test-events.jsonl" >> "$GITHUB_OUTPUT"
+
+      - name: go test -race
+        if: runner.os == 'Linux'
+        shell: bash
+        run: go test -race ./...
+
+      - name: Test step summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, os
+          path = "test-events.jsonl"
+          ran, skipped = [], []
+          if os.path.exists(path):
+              with open(path, encoding="utf-8") as f:
+                  for line in f:
+                      try:
+                          ev = json.loads(line)
+                      except json.JSONDecodeError:
+                          continue
+                      if ev.get("Action") == "pass" and ev.get("Test"):
+                          ran.append(ev["Package"] + "::" + ev["Test"])
+                      elif ev.get("Action") == "skip" and ev.get("Test"):
+                          skipped.append(ev["Package"] + "::" + ev["Test"])
+          print("## Go test summary")
+          print()
+          print(f"Matrix: `{os.environ.get('MATRIX_OS','?')}` / go `{os.environ.get('MATRIX_GO','?')}`")
+          print()
+          print(f"### Ran ({len(ran)})")
+          for t in sorted(set(ran)):
+              print(f"- `{t}`")
+          print()
+          print(f"### Skipped ({len(skipped)})")
+          for t in sorted(set(skipped)):
+              print(f"- `{t}`")
+          PY
+        env:
+          MATRIX_OS: ${{ matrix.os }}
+          MATRIX_GO: ${{ matrix.go }}
+
+  fixtures:
+    name: regenerate fixtures check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read pinned SOURCE
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha=$(sed -n 's/^beans_sha=//p' testdata/golden/SOURCE | head -1)
+          bun=$(sed -n 's/^bun_version=//p' testdata/golden/SOURCE | head -1)
+          if [ -z "$sha" ]; then
+            echo "testdata/golden/SOURCE missing beans_sha="
+            exit 1
+          fi
+          if [ -z "$bun" ]; then
+            echo "testdata/golden/SOURCE missing bun_version="
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "bun=$bun" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          repository: bloodf/beans
+          ref: ${{ steps.source.outputs.sha }}
+          path: beans
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ steps.source.outputs.bun }}
+
+      - name: Regenerate and compare
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/regen
+          cp -a testdata/golden /tmp/regen/committed
+          bun tools/gen-fixtures/gen.ts "$PWD/beans"
+          # Restore SOURCE (generator rewrites it) before comparing artifacts.
+          cp /tmp/regen/committed/SOURCE testdata/golden/SOURCE
+          bun tools/gen-fixtures/compare.ts /tmp/regen/committed testdata/golden

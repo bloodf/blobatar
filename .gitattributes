@@ -1,0 +1,8 @@
+# Golden fixtures are byte-compared; keep LF on all platforms.
+testdata/golden/** text eol=lf
+*.go text eol=lf
+go.mod text eol=lf
+go.sum text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.ts text eol=lf

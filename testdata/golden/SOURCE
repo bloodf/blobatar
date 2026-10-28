@@ -1,0 +1,4 @@
+beans_sha=4760281f2b9cb24eec4438a473e7226cd4e3980c
+upstream_blobatar_sha=a7fd546ebede49d0a9fa638945b9e534489782a2
+bun_version=1.4.4
+generator=bun tools/gen-fixtures/gen.ts <beans-dir>
