@@ -3,6 +3,7 @@ package blobatar_test
 import (
 	"math"
 	"sort"
+	"sync"
 	"testing"
 
 	"github.com/bloodf/blobatar"
@@ -60,6 +61,40 @@ func TestNormalizeTurkishIAndFinalSigma(t *testing.T) {
 	want := "οδος"
 	if got := blobatar.Normalize("ΟΔΟΣ"); got != want {
 		t.Fatalf("final sigma: got %q (%v) want %q (%v)", got, []rune(got), want, []rune(want))
+	}
+}
+
+func TestNormalizeConcurrent(t *testing.T) {
+	cases, err := golden.LoadNormalize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cases) == 0 {
+		t.Fatal("normalize.jsonl is empty")
+	}
+	const goroutines = 32
+	const rounds = 200
+	var wg sync.WaitGroup
+	errCh := make(chan string, goroutines)
+	for g := 0; g < goroutines; g++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for r := 0; r < rounds; r++ {
+				for _, tc := range cases {
+					got := blobatar.Normalize(tc.Seed)
+					if got != tc.Normalized {
+						errCh <- tc.Name + ": got " + got + " want " + tc.Normalized
+						return
+					}
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	close(errCh)
+	for msg := range errCh {
+		t.Error(msg)
 	}
 }
 

@@ -15,10 +15,6 @@ import (
 
 const sep byte = 0xff
 
-// jsLower matches String.prototype.toLowerCase via the Unicode root locale
-// (language.Und): Turkish İ → i̇, and Final_Sigma (ΟΔΟΣ → οδος).
-var jsLower = cases.Lower(language.Und)
-
 // jsTrimRune reports whether r is stripped by String.prototype.trim:
 // ECMAScript WhiteSpace + LineTerminator. Includes U+FEFF (BOM), U+00A0,
 // U+1680, U+2000–U+200A, U+2028, U+2029, U+202F, U+205F, U+3000.
@@ -47,11 +43,21 @@ func jsTrimRune(r rune) bool {
 	}
 }
 
-// Normalize mirrors normalizeSeed: NFC, then ES trim, then root-locale lower.
+// Normalize mirrors normalizeSeed: NFC, then ES trim, then root-locale lower
+// (cases.Lower(language.Und): Turkish İ → i̇, Final_Sigma ΟΔΟΣ → οδος).
 // Inputs a human considers equal (precomposed vs decomposed é, mixed case,
 // surrounding whitespace) hash equally.
+//
+// Invalid UTF-8: Go strings may hold raw invalid bytes that JS strings cannot.
+// NFC, TrimFunc, and Lower leave those byte sequences unchanged and only
+// transform well-formed runes; the returned string may still contain the
+// original invalid bytes. (JS TextEncoder would emit U+FFFD for lone
+// surrogates instead — that path does not arise for valid JS string seeds.)
+//
+// A fresh cases.Caser is created per call; x/text Casers are not safe for
+// concurrent use when shared.
 func Normalize(seed string) string {
-	return jsLower.String(strings.TrimFunc(norm.NFC.String(seed), jsTrimRune))
+	return cases.Lower(language.Und).String(strings.TrimFunc(norm.NFC.String(seed), jsTrimRune))
 }
 
 // jsStringLen returns the UTF-16 code unit length of s, matching JavaScript's

@@ -2,6 +2,7 @@ name: test
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -40,6 +41,11 @@ jobs:
           set -euo pipefail
           go test -json ./... | tee test-events.jsonl
           echo "jsonl=test-events.jsonl" >> "$GITHUB_OUTPUT"
+
+      - name: go test -race
+        if: runner.os == 'Linux'
+        shell: bash
+        run: go test -race ./...
 
       - name: Test step summary
         if: always()

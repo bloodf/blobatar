@@ -1,7 +1,7 @@
 /**
  * Compare committed golden fixtures against a regeneration.
  *
- * - gen2.txt: byte-exact
+ * - gen2.txt, normalize.jsonl: byte-exact
  * - geometry.jsonl / frames.jsonl: structural equality with absolute ε 1e-9
  *   on numbers; keys, types, row counts and non-numeric values must match exactly.
  *
@@ -29,15 +29,17 @@ function read(dir: string, name: string): Buffer {
   return readFileSync(join(dir, name));
 }
 
-// --- gen2.txt: byte-exact ---
-{
-  const a = read(committedDir, "gen2.txt");
-  const b = read(regeneratedDir, "gen2.txt");
+function compareBytes(name: string): void {
+  const a = read(committedDir, name);
+  const b = read(regeneratedDir, name);
   if (!a.equals(b)) {
-    fail(`gen2.txt: byte mismatch (committed ${a.length} B vs regenerated ${b.length} B)`);
+    fail(`${name}: byte mismatch (committed ${a.length} B vs regenerated ${b.length} B)`);
   }
-  console.log("gen2.txt: byte-exact OK");
+  console.log(`${name}: byte-exact OK`);
 }
+
+compareBytes("gen2.txt");
+compareBytes("normalize.jsonl");
 
 function parseJSONL(buf: Buffer, label: string): unknown[] {
   const text = buf.toString("utf8");
