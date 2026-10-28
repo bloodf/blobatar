@@ -47,7 +47,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
-          import json, os, collections
+          import json, os
           path = "test-events.jsonl"
           ran, skipped = [], []
           if os.path.exists(path):
@@ -83,17 +83,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Read pinned Beans SHA
+      - name: Read pinned SOURCE
         id: source
         shell: bash
         run: |
           set -euo pipefail
           sha=$(sed -n 's/^beans_sha=//p' testdata/golden/SOURCE | head -1)
+          bun=$(sed -n 's/^bun_version=//p' testdata/golden/SOURCE | head -1)
           if [ -z "$sha" ]; then
             echo "testdata/golden/SOURCE missing beans_sha="
             exit 1
           fi
+          if [ -z "$bun" ]; then
+            echo "testdata/golden/SOURCE missing bun_version="
+            exit 1
+          fi
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "bun=$bun" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v4
         with:
@@ -103,17 +109,15 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: ${{ steps.source.outputs.bun }}
 
-      - name: Regenerate and diff
+      - name: Regenerate and compare
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/regen
-          cp -a testdata/golden /tmp/regen/before
+          cp -a testdata/golden /tmp/regen/committed
           bun tools/gen-fixtures/gen.ts "$PWD/beans"
-          diff -u /tmp/regen/before/gen2.txt testdata/golden/gen2.txt
-          diff -u /tmp/regen/before/geometry.jsonl testdata/golden/geometry.jsonl
-          diff -u /tmp/regen/before/frames.jsonl testdata/golden/frames.jsonl
-          # SOURCE records the SHA used; leave it as committed (generator rewrites it).
-          git checkout -- testdata/golden/SOURCE
+          # Restore SOURCE (generator rewrites it) before comparing artifacts.
+          cp /tmp/regen/committed/SOURCE testdata/golden/SOURCE
+          bun tools/gen-fixtures/compare.ts /tmp/regen/committed testdata/golden

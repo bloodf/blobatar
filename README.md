@@ -25,11 +25,17 @@ a later PR.
 Golden fixtures under `testdata/golden/` are generated **from the Beans
 TypeScript only**. They are **never regenerated to make a test pass**. A diff
 means the Go port drifted, or a deliberate visual change needs a new generation
-and CTO sign-off. See `testdata/golden/SOURCE` for the pinned Beans SHA and the
-exact generator command.
+and CTO sign-off. See `testdata/golden/SOURCE` for the pinned Beans SHA, Bun
+version (Beans CI uses `oven-sh/setup-bun@v2` unpinned; fixtures pin the
+resolved version), and the exact generator command.
+
+`gen2.txt` (and its hashes) are byte-exact. `geometry.jsonl` / `frames.jsonl`
+are compared structurally with absolute ε `1e-9`. `normalize.jsonl` is the JS
+oracle for `Normalize`.
 
 ```bash
 bun tools/gen-fixtures/gen.ts /path/to/beans
+bun tools/gen-fixtures/compare.ts testdata/golden /path/to/regenerated
 ```
 
 ## License

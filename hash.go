@@ -8,16 +8,50 @@ package blobatar
 import (
 	"strings"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"golang.org/x/text/unicode/norm"
 )
 
 const sep byte = 0xff
 
-// Normalize mirrors normalizeSeed: NFC, trim, lowercase.
+// jsLower matches String.prototype.toLowerCase via the Unicode root locale
+// (language.Und): Turkish İ → i̇, and Final_Sigma (ΟΔΟΣ → οδος).
+var jsLower = cases.Lower(language.Und)
+
+// jsTrimRune reports whether r is stripped by String.prototype.trim:
+// ECMAScript WhiteSpace + LineTerminator. Includes U+FEFF (BOM), U+00A0,
+// U+1680, U+2000–U+200A, U+2028, U+2029, U+202F, U+205F, U+3000.
+// Does NOT include U+0085 (NEL) or U+180E.
+func jsTrimRune(r rune) bool {
+	switch r {
+	case 0x0009, // TAB
+		0x000B, // VT
+		0x000C, // FF
+		0x0020, // SP
+		0x00A0, // NBSP
+		0x1680, // Ogham space mark
+		0x2000, 0x2001, 0x2002, 0x2003, 0x2004,
+		0x2005, 0x2006, 0x2007, 0x2008, 0x2009, 0x200A,
+		0x202F, // narrow NBSP
+		0x205F, // medium mathematical space
+		0x3000, // ideographic space
+		0xFEFF, // ZWNBSP / BOM
+		0x000A, // LF
+		0x000D, // CR
+		0x2028, // line separator
+		0x2029: // paragraph separator
+		return true
+	default:
+		return false
+	}
+}
+
+// Normalize mirrors normalizeSeed: NFC, then ES trim, then root-locale lower.
 // Inputs a human considers equal (precomposed vs decomposed é, mixed case,
 // surrounding whitespace) hash equally.
 func Normalize(seed string) string {
-	return strings.ToLower(strings.TrimSpace(norm.NFC.String(seed)))
+	return jsLower.String(strings.TrimFunc(norm.NFC.String(seed), jsTrimRune))
 }
 
 // jsStringLen returns the UTF-16 code unit length of s, matching JavaScript's

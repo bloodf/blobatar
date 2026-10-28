@@ -4,6 +4,7 @@ package golden
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -78,16 +79,52 @@ func LoadGen2() (Gen2, error) {
 	return out, sc.Err()
 }
 
-// SourceBeansSHA reads beans_sha from testdata/golden/SOURCE.
-func SourceBeansSHA() (string, error) {
+// NormalizeCase is one row of normalize.jsonl.
+type NormalizeCase struct {
+	Name       string `json:"name"`
+	Seed       string `json:"seed"`
+	Normalized string `json:"normalized"`
+}
+
+// LoadNormalize parses testdata/golden/normalize.jsonl.
+func LoadNormalize() ([]NormalizeCase, error) {
+	raw, err := os.ReadFile(filepath.Join(Root(), "normalize.jsonl"))
+	if err != nil {
+		return nil, err
+	}
+	var out []NormalizeCase
+	sc := bufio.NewScanner(bytes.NewReader(raw))
+	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for sc.Scan() {
+		line := sc.Text()
+		if line == "" {
+			continue
+		}
+		var c NormalizeCase
+		if err := json.Unmarshal([]byte(line), &c); err != nil {
+			return nil, fmt.Errorf("golden: normalize.jsonl: %w", err)
+		}
+		out = append(out, c)
+	}
+	return out, sc.Err()
+}
+
+// SourceField reads a key=value field from testdata/golden/SOURCE.
+func SourceField(key string) (string, error) {
 	raw, err := os.ReadFile(filepath.Join(Root(), "SOURCE"))
 	if err != nil {
 		return "", err
 	}
+	prefix := key + "="
 	for _, line := range strings.Split(string(raw), "\n") {
-		if strings.HasPrefix(line, "beans_sha=") {
-			return strings.TrimPrefix(line, "beans_sha="), nil
+		if strings.HasPrefix(line, prefix) {
+			return strings.TrimPrefix(line, prefix), nil
 		}
 	}
-	return "", fmt.Errorf("golden: beans_sha missing from SOURCE")
+	return "", fmt.Errorf("golden: %s missing from SOURCE", key)
+}
+
+// SourceBeansSHA reads beans_sha from testdata/golden/SOURCE.
+func SourceBeansSHA() (string, error) {
+	return SourceField("beans_sha")
 }

@@ -9,15 +9,57 @@ import (
 	"github.com/bloodf/blobatar/internal/golden"
 )
 
-func TestNormalizeNFC(t *testing.T) {
+func TestNormalizeAgainstJSFixture(t *testing.T) {
+	cases, err := golden.LoadNormalize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cases) == 0 {
+		t.Fatal("normalize.jsonl is empty")
+	}
+	for _, tc := range cases {
+		got := blobatar.Normalize(tc.Seed)
+		if got != tc.Normalized {
+			t.Errorf("%s: Normalize(%q)=%q want %q (runes got=%v want=%v)",
+				tc.Name, tc.Seed, got, tc.Normalized, []rune(got), []rune(tc.Normalized))
+		}
+	}
+}
+
+func TestNormalizeNFCPair(t *testing.T) {
 	composed := "caf\u00e9"    // U+00E9
 	decomposed := "cafe\u0301" // e + combining acute
 	if blobatar.Normalize(composed) != blobatar.Normalize(decomposed) {
 		t.Fatalf("NFC pair must normalize equal: %q vs %q",
 			blobatar.Normalize(composed), blobatar.Normalize(decomposed))
 	}
-	if blobatar.Normalize("  Alain@X.com  ") != "alain@x.com" {
-		t.Fatalf("trim+lower: got %q", blobatar.Normalize("  Alain@X.com  "))
+}
+
+func TestNormalizeTrimKeepsNELDropsBOM(t *testing.T) {
+	// BOM is ES WhiteSpace; NEL is not.
+	if got := blobatar.Normalize("\uFEFFx\uFEFF"); got != "x" {
+		t.Fatalf("BOM trim: got %q want %q", got, "x")
+	}
+	if got := blobatar.Normalize("\u0085x\u0085"); got != "\u0085x\u0085" {
+		t.Fatalf("NEL keep: got %q want %q", got, "\u0085x\u0085")
+	}
+	if got := blobatar.Normalize("\u00A0x\u00A0"); got != "x" {
+		t.Fatalf("NBSP trim: got %q", got)
+	}
+	if got := blobatar.Normalize("\u3000x\u3000"); got != "x" {
+		t.Fatalf("U+3000 trim: got %q", got)
+	}
+}
+
+func TestNormalizeTurkishIAndFinalSigma(t *testing.T) {
+	// JS: "İ".toLowerCase() → "i\u0307"
+	if got := blobatar.Normalize("\u0130"); got != "i\u0307" {
+		t.Fatalf("Turkish İ: got %q (%v) want %q", got, []rune(got), "i\u0307")
+	}
+	// JS Final_Sigma: ΟΔΟΣ → οδος (ends with ς U+03C2)
+	want := "οδος"
+	if got := blobatar.Normalize("ΟΔΟΣ"); got != want {
+		t.Fatalf("final sigma: got %q (%v) want %q (%v)", got, []rune(got), want, []rune(want))
 	}
 }
 
@@ -53,7 +95,6 @@ func TestSeedStateKnown(t *testing.T) {
 }
 
 func TestStreamShapeAlain(t *testing.T) {
-	// bun: stream(seedState("alain"), "shape") === 0.1506984510924667
 	got := blobatar.StreamForTest(blobatar.SeedStateForTest("alain"), "shape")
 	const want = 0.1506984510924667
 	if got != want {
@@ -86,6 +127,16 @@ func TestHistogramMatchesGen2(t *testing.T) {
 	}
 	if len(counts) != len(g.Histogram) {
 		t.Errorf("shape set mismatch: got %v want %v", keys(counts), names)
+	}
+}
+
+func TestSOURCERecordsBunVersion(t *testing.T) {
+	v, err := golden.SourceField("bun_version")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v == "" {
+		t.Fatal("bun_version empty")
 	}
 }
 

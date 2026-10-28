@@ -1,0 +1,12 @@
+{"name":"empty","seed":"","normalized":""}
+{"name":"ascii-trim-lower","seed":"  Alain@X.com  ","normalized":"alain@x.com"}
+{"name":"nfc-composed","seed":"café","normalized":"café"}
+{"name":"nfc-decomposed","seed":"café","normalized":"café"}
+{"name":"turkish-I","seed":"İ","normalized":"i̇"}
+{"name":"final-sigma","seed":"ΟΔΟΣ","normalized":"οδος"}
+{"name":"leading-BOM","seed":"﻿blob","normalized":"blob"}
+{"name":"trailing-NEL","seed":"blob","normalized":"blob"}
+{"name":"NEL-both-sides","seed":"x","normalized":"x"}
+{"name":"NBSP-both-sides","seed":" x ","normalized":"x"}
+{"name":"ideographic-space","seed":"　x　","normalized":"x"}
+{"name":"BOM-both-sides","seed":"﻿x﻿","normalized":"x"}

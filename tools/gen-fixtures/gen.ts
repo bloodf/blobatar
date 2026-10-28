@@ -31,6 +31,7 @@ const {
   BOT_AVATAR_STATES,
 } = await import(join(pkg, "index.ts"));
 const { SEEDS } = await import(join(pkg, "test/golden/corpus.ts"));
+const { normalizeSeed } = await import(join(pkg, "vendor/core/hash.ts"));
 
 type BotLook = { version: 1; base: Record<string, unknown>; states?: Record<string, Record<string, unknown>> };
 const look = (base: Record<string, unknown>): BotLook => ({ version: 1, base });
@@ -43,6 +44,14 @@ const LERP_TS = [0, 0.5, 1] as const;
 const NFC_COMPOSED = "caf\u00e9";
 const NFC_DECOMPOSED = "cafe\u0301";
 const LONG_SEED = "x".repeat(10_000);
+/** Turkish capital I with dot; JS toLowerCase → i + combining dot above. */
+const TURKISH_I = "\u0130";
+/** Greek uppercase; Final_Sigma → οδος (ends with ς U+03C2). */
+const FINAL_SIGMA = "\u039f\u0394\u039f\u03a3";
+/** Leading BOM must be trimmed by Normalize. */
+const LEADING_BOM = "\uFEFFblob";
+/** Trailing NEL (U+0085) must be kept — not ES WhiteSpace. */
+const TRAILING_NEL = "blob\u0085";
 
 mkdirSync(outDir, { recursive: true });
 copyFileSync(join(pkg, "test/golden/gen2.txt"), join(outDir, "gen2.txt"));
@@ -72,6 +81,12 @@ type LerpLine = {
   geometry: unknown;
 };
 
+type NormalizeLine = {
+  name: string;
+  seed: string;
+  normalized: string;
+};
+
 const geoLines: GeoLine[] = [];
 const frameLines: FrameLine[] = [];
 const lerpLines: LerpLine[] = [];
@@ -95,17 +110,37 @@ for (const seed of SEEDS) {
   pushGeometry(seed, null, "idle");
 }
 
-// Edge-case seeds.
+// Edge-case seeds (geometry + frames).
 const edgeSeeds = [
   "",
   NFC_COMPOSED,
   NFC_DECOMPOSED,
   LONG_SEED,
+  TURKISH_I,
+  FINAL_SIGMA,
+  LEADING_BOM,
+  TRAILING_NEL,
 ];
 for (const seed of edgeSeeds) {
   pushGeometry(seed, null, "idle");
   pushFrames(seed, null, "idle");
 }
+
+// Normalize oracle rows — generated from TS so Go is checked against JS output.
+const normalizeCases: NormalizeLine[] = [
+  { name: "empty", seed: "", normalized: normalizeSeed("") },
+  { name: "ascii-trim-lower", seed: "  Alain@X.com  ", normalized: normalizeSeed("  Alain@X.com  ") },
+  { name: "nfc-composed", seed: NFC_COMPOSED, normalized: normalizeSeed(NFC_COMPOSED) },
+  { name: "nfc-decomposed", seed: NFC_DECOMPOSED, normalized: normalizeSeed(NFC_DECOMPOSED) },
+  { name: "turkish-I", seed: TURKISH_I, normalized: normalizeSeed(TURKISH_I) },
+  { name: "final-sigma", seed: FINAL_SIGMA, normalized: normalizeSeed(FINAL_SIGMA) },
+  { name: "leading-BOM", seed: LEADING_BOM, normalized: normalizeSeed(LEADING_BOM) },
+  { name: "trailing-NEL", seed: TRAILING_NEL, normalized: normalizeSeed(TRAILING_NEL) },
+  { name: "NEL-both-sides", seed: "\u0085x\u0085", normalized: normalizeSeed("\u0085x\u0085") },
+  { name: "NBSP-both-sides", seed: "\u00A0x\u00A0", normalized: normalizeSeed("\u00A0x\u00A0") },
+  { name: "ideographic-space", seed: "\u3000x\u3000", normalized: normalizeSeed("\u3000x\u3000") },
+  { name: "BOM-both-sides", seed: "\uFEFFx\uFEFF", normalized: normalizeSeed("\uFEFFx\uFEFF") },
+];
 
 // BotLook matrix: every shape / expression / tone / background / state once.
 // UUID-style bot ids keep these distinct from the corpus templates.
@@ -177,39 +212,42 @@ function writeJSONL(path: string, rows: object[]) {
 }
 
 writeJSONL(join(outDir, "geometry.jsonl"), geoLines);
-// frames.jsonl: avatarFrame rows first, then lerp rows (distinct shape via toLook).
 writeJSONL(join(outDir, "frames.jsonl"), [...frameLines, ...lerpLines]);
+writeJSONL(join(outDir, "normalize.jsonl"), normalizeCases);
 
-// SOURCE metadata.
+// SOURCE metadata. Bun version matches Beans CI's oven-sh/setup-bun@v2
+// (unpinned → latest); we pin the resolved version that produced these fixtures.
 const beansSha = (
   await Bun.$`git -C ${resolve(beansDir)} rev-parse HEAD`.text()
 ).trim();
+const bunVersion = Bun.version; // e.g. 1.4.4
 const upstreamSha = "a7fd546ebede49d0a9fa638945b9e534489782a2";
-// Stable across machines; the beans-dir argument is whatever checkout the
-// operator (or CI) pointed at for beans_sha.
 const cmd = "bun tools/gen-fixtures/gen.ts <beans-dir>";
 const source = [
   `beans_sha=${beansSha}`,
   `upstream_blobatar_sha=${upstreamSha}`,
+  `bun_version=${bunVersion}`,
   `generator=${cmd}`,
   "",
 ].join("\n");
 writeFileSync(join(outDir, "SOURCE"), source, "utf8");
 
-// Fingerprint for the run log (not written into fixtures).
 const finger = (name: string) =>
   createHash("sha256").update(readFileSync(join(outDir, name))).digest("hex").slice(0, 16);
 console.log(
   JSON.stringify(
     {
       beansSha,
+      bunVersion,
       geometry: geoLines.length,
       frames: frameLines.length,
       lerps: lerpLines.length,
+      normalize: normalizeCases.length,
       hashes: {
         "gen2.txt": finger("gen2.txt"),
         "geometry.jsonl": finger("geometry.jsonl"),
         "frames.jsonl": finger("frames.jsonl"),
+        "normalize.jsonl": finger("normalize.jsonl"),
       },
     },
     null,
