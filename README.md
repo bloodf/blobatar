@@ -50,6 +50,32 @@ returns an error for non-finite OKLCh components (never a silent
 JSON accepts only a number or number array. `Int` with `max < min` matches
 Beans arithmetic (not an error).
 
+### TraitOverrides migration
+
+Callers that previously put bare numbers (or `[]float64`) in a
+`map[string]any` / loose override map must construct typed values:
+
+```go
+// Before (no longer compiles):
+overrides := map[string]any{
+    "shape":   0.965,
+    "eye.gap": []float64{0.1, 0.2},
+}
+
+// After:
+overrides := blobatar.TraitOverrides{
+    "shape":   blobatar.FixedTrait(0.965),
+    "eye.gap": blobatar.ListTrait(0.1, 0.2),
+}
+```
+
+JSON still accepts `number | number[]` only (`{"shape":0.965,"eye.gap":[0.1,0.2]}`).
+
+A zero-value `TraitOverride{}` (for example `overrides["shape"] = blobatar.TraitOverride{}`)
+is a **fixed override to 0**, not “leave this trait alone”. To leave a trait
+unset, omit its key from the map. (`ListTrait()` with no candidates also falls
+through to the hash, matching an omitted key.)
+
 Authored tables (`hot`/`rose`/`blush`/`bile` tints, contrast floors, tone band
 edges/names) are unexported; use `HotTint`, `RoseTint`, `BlushTint`, `BileTint`,
 `TintTargets`, `ContrastFloors`, `ToneBandEdges`, and `ToneBandNames` (each

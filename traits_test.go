@@ -18,6 +18,20 @@ func TestTraitsOverrides(t *testing.T) {
 		t.Fatalf("override should change shape float")
 	}
 
+	// Zero-value TraitOverride{} is FixedTrait(0), not "unset".
+	if base == 0 {
+		t.Fatalf("precondition: alain shape must not already be 0 (got %v)", base)
+	}
+	zero := blobatar.NewTraits("alain", true, blobatar.TraitOverrides{"shape": {}}).Float("shape")
+	if zero != 0 {
+		t.Fatalf("zero-value TraitOverride{}: got %v want 0", zero)
+	}
+	// Omit the key (empty map) to leave the trait unset.
+	omitted := blobatar.NewTraits("alain", true, blobatar.TraitOverrides{}).Float("shape")
+	if omitted != base {
+		t.Fatalf("omitted key: got %v want %v", omitted, base)
+	}
+
 	// Clamp: 1 → 0.999999, negative → 0, NaN → 0.
 	if got := blobatar.NewTraits("alain", true, blobatar.TraitOverrides{"shape": blobatar.FixedTrait(1.0)}).Float("shape"); got != 0.999999 {
 		t.Fatalf("clamp 1: got %v", got)

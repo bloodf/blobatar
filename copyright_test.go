@@ -7,41 +7,70 @@ import (
 	"testing"
 )
 
-// Ported Go sources must carry Alain00's MIT copyright line. NOTICE keeps the
-// full MIT text; the repo LICENSE remains GPL-3.0.
-var portedGoFiles = []string{
-	"hash.go",
-	"traits.go",
-	"color.go",
-	"look.go",
+// Exact MIT headers required on every Go file ported from Alain00/blobatar.
+// NOTICE keeps the full MIT text; the repo LICENSE remains GPL-3.0.
+var expectedMITHeaders = map[string]string{
+	"hash.go": `// Copyright (c) 2026 Alain
+//
+// Ported from Alain00/blobatar (vendor/core/hash.ts), MIT License.
+// See NOTICE for the full license text.
+`,
+	"traits.go": `// Copyright (c) 2026 Alain
+//
+// Ported from Alain00/blobatar (vendor/core/traits.ts and the shape band table
+// in vendor/core/styles/blob.ts), MIT License. See NOTICE for the full license text.
+`,
+	"color.go": `// Copyright (c) 2026 Alain
+//
+// Ported from Alain00/blobatar (vendor/core/color.ts), MIT License.
+// See NOTICE for the full license text.
+`,
+	"look.go": `// Copyright (c) 2026 Alain
+//
+// Ported from Alain00/blobatar via Beans packages/beans-blobatar/appearance.ts
+// (validateBotLook / resolveBotAppearance), MIT License. See NOTICE for the
+// full license text. Seeded palette/hue/tone come from color.go / traits.go.
+`,
 }
 
-const mitHeaderPrefix = `// Copyright (c) 2026 Alain
-//
-// Ported from Alain00/blobatar`
+// hasExactMITHeader reports whether text begins with the expected header block.
+// A bare mention of "NOTICE" elsewhere in the file is not enough.
+func hasExactMITHeader(text, want string) bool {
+	return strings.HasPrefix(text, want)
+}
 
 func TestPortedFileMITHeaders(t *testing.T) {
 	root := moduleRoot(t)
-	for _, name := range portedGoFiles {
+	for name, want := range expectedMITHeaders {
 		path := filepath.Join(root, name)
 		raw, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatalf("read %s: %v", name, err)
 		}
-		text := string(raw)
-		if !strings.HasPrefix(text, mitHeaderPrefix) {
-			t.Errorf("%s: missing MIT port header (Copyright (c) 2026 Alain)", name)
+		if !hasExactMITHeader(string(raw), want) {
+			t.Errorf("%s: missing exact MIT port header referencing NOTICE", name)
 		}
-		head := text
-		if len(head) > 500 {
-			head = head[:500]
-		}
-		if !strings.Contains(head, "MIT License") {
-			t.Errorf("%s: header must mention MIT License", name)
-		}
-		// look.go wraps "See NOTICE for the / full license text." across lines.
-		if !strings.Contains(head, "NOTICE") {
-			t.Errorf("%s: header must point at NOTICE", name)
+	}
+}
+
+func TestMITHeaderRejectsNoticeOnlyMention(t *testing.T) {
+	// Would pass a loose "contains NOTICE" check, but must fail the exact prefix.
+	fake := `// Copyright (c) 2026 Alain
+//
+// Ported from Alain00/blobatar somewhere, MIT License.
+// NOTICE is mentioned but this is not the real header for any ported file.
+
+package blobatar
+`
+	if !strings.Contains(fake, "NOTICE") {
+		t.Fatal("precondition: fake must contain NOTICE")
+	}
+	if !strings.Contains(fake, "MIT License") {
+		t.Fatal("precondition: fake must contain MIT License")
+	}
+	for name, want := range expectedMITHeaders {
+		if hasExactMITHeader(fake, want) {
+			t.Errorf("NOTICE-only / wrong-path header must not satisfy %s", name)
 		}
 	}
 }
