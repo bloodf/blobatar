@@ -27,8 +27,8 @@ func TestTraitsPaletteParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(cases) == 0 {
-		t.Fatal("traits.jsonl is empty")
+	if len(cases) != 1000 {
+		t.Fatalf("traits.jsonl: got %d rows want 1000", len(cases))
 	}
 	for _, tc := range cases {
 		tr := blobatar.Traits(tc.Seed)

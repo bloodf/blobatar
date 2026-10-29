@@ -118,21 +118,35 @@ var shapeBands = []struct {
 	{"triangle", 1},
 }
 
-// ToneEdges are the upper edges of the tone swatches in vendor/core/color.ts.
+// toneEdges are the upper edges of the tone swatches in vendor/core/color.ts.
 // Each band excludes its edge. Names mirror appearance.ts BOT_TONES.
-var ToneEdges = []float64{0.2, 0.36, 0.62, 0.8, 0.93, 1}
+var toneEdges = []float64{0.2, 0.36, 0.62, 0.8, 0.93, 1}
 
-// ToneNames are the BOT_TONES labels for ToneEdges.
-var ToneNames = []string{"pastel", "pale", "mid", "deep", "bright", "ink"}
+// toneNames are the BOT_TONES labels for toneEdges.
+var toneNames = []string{"pastel", "pale", "mid", "deep", "bright", "ink"}
+
+// ToneBandEdges returns a copy of the tone swatch upper edges.
+func ToneBandEdges() []float64 {
+	out := make([]float64, len(toneEdges))
+	copy(out, toneEdges)
+	return out
+}
+
+// ToneBandNames returns a copy of the BOT_TONES labels for ToneBandEdges.
+func ToneBandNames() []string {
+	out := make([]string, len(toneNames))
+	copy(out, toneNames)
+	return out
+}
 
 // ToneName maps a unit tone float to its swatch name.
 func ToneName(v float64) string {
-	for i, edge := range ToneEdges {
+	for i, edge := range toneEdges {
 		if v < edge {
-			return ToneNames[i]
+			return toneNames[i]
 		}
 	}
-	return ToneNames[len(ToneNames)-1]
+	return toneNames[len(toneNames)-1]
 }
 
 // Hue returns the seed's hue in [0, 360).

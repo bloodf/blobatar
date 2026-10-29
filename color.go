@@ -66,6 +66,10 @@ func inGamut(rgb [3]float64) bool {
 	return true
 }
 
+func isFinite(v float64) bool {
+	return !math.IsNaN(v) && !math.IsInf(v, 0)
+}
+
 // resolveColor resolves to in-gamut linear sRGB, reducing chroma if needed.
 func resolveColor(color Oklch) [3]float64 {
 	rgb := toLinear(color)
@@ -83,6 +87,10 @@ func resolveColor(color Oklch) [3]float64 {
 		rgb = toLinear(Oklch{L: color.L, C: lo, H: color.H})
 	}
 	for i := range rgb {
+		if !isFinite(rgb[i]) {
+			rgb[i] = 0
+			continue
+		}
 		if rgb[i] < 0 {
 			rgb[i] = 0
 		} else if rgb[i] > 1 {
@@ -136,16 +144,27 @@ func EnsureContrast(fg, bg Oklch, min float64) Oklch {
 }
 
 // ToHex encodes color as lowercase #rrggbb.
+//
+// Non-finite channel values (NaN, ±Inf) — whether from a non-finite OKLCh
+// input or from the transfer function — are treated as 0 before
+// int(math.Round(...)), so the result is portable across GOARCH (Go's
+// float64→int conversion of NaN is otherwise platform-dependent).
 func ToHex(color Oklch) string {
 	rgb := resolveColor(color)
 	out := make([]byte, 0, 7)
 	out = append(out, '#')
 	for _, v := range rgb {
+		if !isFinite(v) {
+			v = 0
+		}
 		s := 0.0
 		if v <= 0.0031308 {
 			s = 12.92 * v
 		} else {
 			s = 1.055*math.Pow(v, 1/2.4) - 0.055
+		}
+		if !isFinite(s) {
+			s = 0
 		}
 		n := int(math.Round(s * 255))
 		if n < 0 {
@@ -162,20 +181,38 @@ func ToHex(color Oklch) string {
 }
 
 func isHexDigit(c byte) bool {
-	return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F'
+	return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
 }
 
-// FromHex decodes an #rrggbb (or #RRGGBB) string into OKLCh.
-// It returns an error for empty input, a lone "#", wrong lengths, or non-hex
-// characters — it never panics on malformed input.
-func FromHex(hex string) (Oklch, error) {
+// errBadHex is the shared malformed-hex message.
+func errBadHex(hex string) error {
+	return fmt.Errorf("blobatar: FromHex: want #RRGGBB, got %q", hex)
+}
+
+// validateHexRGB reports whether hex is exactly "#RRGGBB" / "#rrggbb"
+// (leading '#' required; bare "rrggbb" is rejected — stricter than the TS
+// oracle's parseInt(hex.slice(1), 16), which silently accepts malformed input).
+func validateHexRGB(hex string) error {
 	if len(hex) != 7 || hex[0] != '#' {
-		return Oklch{}, fmt.Errorf("blobatar: FromHex: want #RRGGBB, got %q", hex)
+		return errBadHex(hex)
 	}
 	for i := 1; i < 7; i++ {
 		if !isHexDigit(hex[i]) {
-			return Oklch{}, fmt.Errorf("blobatar: FromHex: want #RRGGBB, got %q", hex)
+			return errBadHex(hex)
 		}
+	}
+	return nil
+}
+
+// FromHex decodes a "#rrggbb" or "#RRGGBB" string into OKLCh.
+//
+// The leading '#' is required. Bare "rrggbb", empty string, a lone "#", wrong
+// lengths, and non-hex characters all return an error — FromHex never panics
+// and never invents a color for malformed input. The ParseInt error is not
+// dropped.
+func FromHex(hex string) (Oklch, error) {
+	if err := validateHexRGB(hex); err != nil {
+		return Oklch{}, err
 	}
 	n, err := strconv.ParseInt(hex[1:], 16, 64)
 	if err != nil {
@@ -226,7 +263,7 @@ func Mix(a, b Oklch, t float64) Oklch {
 }
 
 // MixHex blends two serialized colors in OKLab and returns lowercase #rrggbb.
-// Both a and b must be valid #RRGGBB (see FromHex).
+// Both a and b must be valid #RRGGBB (see FromHex); errors are propagated.
 func MixHex(a, b string, t float64) (string, error) {
 	ca, err := FromHex(a)
 	if err != nil {
@@ -240,19 +277,32 @@ func MixHex(a, b string, t float64) (string, error) {
 }
 
 // FadeHex blends two hex colors in sRGB (matching CSS transition: fill).
-func FadeHex(a, b string, t float64) string {
+// Both a and b must be valid #RRGGBB (see FromHex); errors are propagated.
+func FadeHex(a, b string, t float64) (string, error) {
+	if err := validateHexRGB(a); err != nil {
+		return "", err
+	}
+	if err := validateHexRGB(b); err != nil {
+		return "", err
+	}
 	out := make([]byte, 0, 7)
 	out = append(out, '#')
 	for i := 1; i < 7; i += 2 {
-		from, _ := strconv.ParseInt(a[i:i+2], 16, 0)
-		to, _ := strconv.ParseInt(b[i:i+2], 16, 0)
+		from, err := strconv.ParseInt(a[i:i+2], 16, 0)
+		if err != nil {
+			return "", fmt.Errorf("blobatar: FadeHex: %w", err)
+		}
+		to, err := strconv.ParseInt(b[i:i+2], 16, 0)
+		if err != nil {
+			return "", fmt.Errorf("blobatar: FadeHex: %w", err)
+		}
 		v := int(math.Round(float64(from) + (float64(to)-float64(from))*t))
 		if v < 16 {
 			out = append(out, '0')
 		}
 		out = strconv.AppendInt(out, int64(v), 16)
 	}
-	return string(out)
+	return string(out), nil
 }
 
 // Tint describes where a tinting pose is heading.
@@ -263,23 +313,44 @@ type Tint struct {
 	C    float64
 }
 
-// Authored tint targets from vendor/core/color.ts.
-var (
-	HOT   = Tint{H: 27, L: 0.58, Pull: 0.6, C: 0.18}
-	ROSE  = Tint{H: 358, L: 0.72, Pull: 0.55, C: 0.16}
-	BLUSH = Tint{H: 12, L: 0.84, Pull: 0.4, C: 0.1}
-	BILE  = Tint{H: 142, L: 0.66, Pull: 0.6, C: 0.13}
-)
-
-// Tints is every target the suite holds the contrast guarantee across.
-var Tints = []struct {
+// NamedTint pairs a tint target with its suite name.
+type NamedTint struct {
 	Name string
 	Tint Tint
-}{
-	{"hot", HOT},
-	{"rose", ROSE},
-	{"blush", BLUSH},
-	{"bile", BILE},
+}
+
+// Authored tint targets from vendor/core/color.ts (unexported; use accessors).
+var (
+	hot   = Tint{H: 27, L: 0.58, Pull: 0.6, C: 0.18}
+	rose  = Tint{H: 358, L: 0.72, Pull: 0.55, C: 0.16}
+	blush = Tint{H: 12, L: 0.84, Pull: 0.4, C: 0.1}
+	bile  = Tint{H: 142, L: 0.66, Pull: 0.6, C: 0.13}
+)
+
+var tints = []NamedTint{
+	{"hot", hot},
+	{"rose", rose},
+	{"blush", blush},
+	{"bile", bile},
+}
+
+// HotTint returns a copy of the "hot" tint target.
+func HotTint() Tint { return hot }
+
+// RoseTint returns a copy of the "rose" tint target.
+func RoseTint() Tint { return rose }
+
+// BlushTint returns a copy of the "blush" tint target.
+func BlushTint() Tint { return blush }
+
+// BileTint returns a copy of the "bile" tint target.
+func BileTint() Tint { return bile }
+
+// TintTargets returns a copy of every tint the suite holds contrast for.
+func TintTargets() []NamedTint {
+	out := make([]NamedTint, len(tints))
+	copy(out, tints)
+	return out
 }
 
 const tintFloor = 4.55
@@ -290,7 +361,7 @@ var (
 )
 
 // Tinted returns the palette a tinting pose heads toward.
-// head and eye must be valid #RRGGBB (see FromHex).
+// head and eye must be valid #RRGGBB (see FromHex); errors are propagated.
 func Tinted(head, eye string, t Tint) (hotHead, hotEye string, err error) {
 	base, err := FromHex(head)
 	if err != nil {
@@ -383,10 +454,17 @@ type Floor struct {
 	Min    float64
 }
 
-// Floors is the authored contrast chain from vendor/core/color.ts.
-var Floors = []Floor{
+// floors is the authored contrast chain from vendor/core/color.ts.
+var floors = []Floor{
 	{"head", "bg", 1.25},
 	{"eye", "head", 4.5},
+}
+
+// ContrastFloors returns a copy of the authored contrast floor chain.
+func ContrastFloors() []Floor {
+	out := make([]Floor, len(floors))
+	copy(out, floors)
+	return out
 }
 
 func authoredRamp(h, tone float64) map[string]Oklch {
@@ -407,7 +485,7 @@ func authoredRamp(h, tone float64) map[string]Oklch {
 func Ramp(hue float64, enforce bool, tone float64) map[string]Oklch {
 	r := authoredRamp(hue, tone)
 	if enforce {
-		for _, f := range Floors {
+		for _, f := range floors {
 			r[f.FG] = EnsureContrast(r[f.FG], r[f.BG], f.Min)
 		}
 	}

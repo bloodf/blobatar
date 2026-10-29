@@ -34,10 +34,18 @@ resolved version), and the exact generator command.
 are compared structurally with absolute ε `1e-9`. `normalize.jsonl` is the JS
 oracle for `Normalize`.
 
-`FromHex` accepts only `#RRGGBB` / `#rrggbb` and returns an error for empty
-input, a lone `#`, wrong lengths, or non-hex characters (it never panics).
-`MixHex` and `Tinted` propagate that error. Gamut checks treat NaN and ±Inf as
-out of gamut.
+`FromHex` accepts only `#RRGGBB` / `#rrggbb` (leading `#` required; bare
+`rrggbb` is rejected — stricter than the TS oracle's silent `parseInt`). It
+returns an error for empty input, a lone `#`, `#zz`, wrong lengths, or non-hex
+characters, and never panics. `MixHex`, `FadeHex`, and `Tinted` propagate that
+error. Gamut checks treat NaN and ±Inf as out of gamut. `ToHex` maps non-finite
+channel values to `0` before `int(math.Round(...))` so the result is portable
+across GOARCH.
+
+Authored tables (`hot`/`rose`/`blush`/`bile` tints, contrast floors, tone band
+edges/names) are unexported; use `HotTint`, `RoseTint`, `BlushTint`, `BileTint`,
+`TintTargets`, `ContrastFloors`, `ToneBandEdges`, and `ToneBandNames` (each
+returns a copy).
 
 ```bash
 bun tools/gen-fixtures/gen.ts /path/to/beans

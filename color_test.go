@@ -53,6 +53,14 @@ func TestToHexFromHexRoundTripKnown(t *testing.T) {
 		t.Fatalf("FromHex(#aabbcc)=%+v", c)
 	}
 
+	upper, err := blobatar.FromHex("#AABBCC")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if upper != c {
+		t.Fatalf("uppercase FromHex mismatch: %+v vs %+v", upper, c)
+	}
+
 	r := blobatar.Ramp(210, true, 0.5)
 	hex := blobatar.ToHex(r["head"])
 	if hex != "#00bcd3" {
@@ -65,24 +73,52 @@ func TestToHexFromHexRoundTripKnown(t *testing.T) {
 }
 
 func TestFromHexMalformed(t *testing.T) {
-	cases := []string{
-		"",
-		"#",
-		"aabbcc",
-		"#abc",
-		"#abcd",
-		"#abcdef0",
-		"#gghhii",
-		"#aabbgg",
-		"#AABB C",
-		"##abbcc",
-		"#aabbcc ",
-		" #aabbcc",
+	cases := []struct {
+		hex string
+	}{
+		{""},
+		{"#"},
+		{"#zz"},
+		{"abc"},
+		{"aabbcc"}, // bare rrggbb — leading '#' required
+		{"#abc"},
+		{"#abcd"},
+		{"#abcdef0"},
+		{"#gghhii"},
+		{"#aabbgg"},
+		{"#AABB C"},
+		{"##abbcc"},
+		{"#aabbcc "},
+		{" #aabbcc"},
 	}
-	for _, hex := range cases {
-		c, err := blobatar.FromHex(hex)
+	for _, tc := range cases {
+		c, err := blobatar.FromHex(tc.hex)
 		if err == nil {
-			t.Errorf("FromHex(%q) = %+v, want error", hex, c)
+			t.Errorf("FromHex(%q) = %+v, want error", tc.hex, c)
+		}
+	}
+}
+
+func TestHexHelpersPropagateFromHexError(t *testing.T) {
+	bad := []string{"", "#", "#zz", "abc", "aabbcc"}
+	for _, hex := range bad {
+		if _, err := blobatar.MixHex(hex, "#000000", 0.5); err == nil {
+			t.Errorf("MixHex(%q, …) want error", hex)
+		}
+		if _, err := blobatar.MixHex("#000000", hex, 0.5); err == nil {
+			t.Errorf("MixHex(…, %q) want error", hex)
+		}
+		if _, err := blobatar.FadeHex(hex, "#ffffff", 0.5); err == nil {
+			t.Errorf("FadeHex(%q, …) want error", hex)
+		}
+		if _, err := blobatar.FadeHex("#ffffff", hex, 0.5); err == nil {
+			t.Errorf("FadeHex(…, %q) want error", hex)
+		}
+		if _, _, err := blobatar.Tinted(hex, "#000000", blobatar.HotTint()); err == nil {
+			t.Errorf("Tinted(%q, …) want error", hex)
+		}
+		if _, _, err := blobatar.Tinted("#ffffff", hex, blobatar.HotTint()); err == nil {
+			t.Errorf("Tinted(…, %q) want error", hex)
 		}
 	}
 }
@@ -111,6 +147,35 @@ func TestInGamutNaNInf(t *testing.T) {
 	}
 	if blobatar.InGamutForTest(1.1, 0, 0) {
 		t.Fatal("above hi must be out of gamut")
+	}
+}
+
+func TestToHexNonFiniteClampsToZero(t *testing.T) {
+	// Portable across GOARCH: non-finite channels encode as 00, not a panic
+	// or platform-dependent int(NaN).
+	cases := []blobatar.Oklch{
+		{L: math.NaN(), C: 0, H: 0},
+		{L: math.Inf(1), C: 0, H: 0},
+		{L: math.Inf(-1), C: 0, H: 0},
+		{L: 0.5, C: math.NaN(), H: 0},
+		{L: 0.5, C: 0.1, H: math.Inf(1)},
+	}
+	for _, c := range cases {
+		got := blobatar.ToHex(c)
+		if len(got) != 7 || got[0] != '#' {
+			t.Fatalf("ToHex(%+v)=%q, want #rrggbb", c, got)
+		}
+		// Each channel must be a valid hex byte; non-finite path is 00.
+		for i := 1; i < 7; i++ {
+			ch := got[i]
+			if !((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f')) {
+				t.Fatalf("ToHex(%+v)=%q has non-hex digit", c, got)
+			}
+		}
+	}
+	// Pure NaN OKLCh collapses to black after the documented clamp.
+	if got := blobatar.ToHex(blobatar.Oklch{L: math.NaN(), C: math.NaN(), H: math.NaN()}); got != "#000000" {
+		t.Fatalf("NaN OKLCh ToHex=%q want #000000", got)
 	}
 }
 
@@ -149,7 +214,7 @@ func TestPaletteAlain(t *testing.T) {
 func TestRampFloorsAcrossHues(t *testing.T) {
 	for h := 0; h < 360; h++ {
 		r := blobatar.Ramp(float64(h), true, 0)
-		for _, f := range blobatar.Floors {
+		for _, f := range blobatar.ContrastFloors() {
 			got := blobatar.Contrast(r[f.FG], r[f.BG])
 			if got < f.Min-1e-9 {
 				t.Fatalf("hue %d %s/%s contrast %v < %v", h, f.FG, f.BG, got, f.Min)
@@ -188,10 +253,17 @@ func TestMixHexFadeHex(t *testing.T) {
 	if got != a {
 		t.Fatalf("MixHex t=0: %q", got)
 	}
-	if got := blobatar.FadeHex(a, a, 0.5); got != a {
-		t.Fatalf("FadeHex same: %q", got)
+	same, err := blobatar.FadeHex(a, a, 0.5)
+	if err != nil {
+		t.Fatal(err)
 	}
-	mid := blobatar.FadeHex("#000000", "#ffffff", 0.5)
+	if same != a {
+		t.Fatalf("FadeHex same: %q", same)
+	}
+	mid, err := blobatar.FadeHex("#000000", "#ffffff", 0.5)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if mid != "#808080" {
 		t.Fatalf("FadeHex mid: %q want #808080", mid)
 	}
@@ -199,7 +271,7 @@ func TestMixHexFadeHex(t *testing.T) {
 
 func TestTintedHeatZero(t *testing.T) {
 	p := blobatar.PaletteColors(200, true, 0.5)
-	hotHead, hotEye, err := blobatar.Tinted(p.Head, p.Eye, blobatar.HOT)
+	hotHead, hotEye, err := blobatar.Tinted(p.Head, p.Eye, blobatar.HotTint())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,5 +288,28 @@ func TestTintedHeatZero(t *testing.T) {
 	}
 	if gotEye != p.Eye {
 		t.Fatalf("heat 0 eye drifted")
+	}
+}
+
+func TestAccessorsReturnCopies(t *testing.T) {
+	edges := blobatar.ToneBandEdges()
+	edges[0] = -1
+	if blobatar.ToneBandEdges()[0] != 0.2 {
+		t.Fatal("ToneBandEdges must return a copy")
+	}
+	names := blobatar.ToneBandNames()
+	names[0] = "x"
+	if blobatar.ToneBandNames()[0] != "pastel" {
+		t.Fatal("ToneBandNames must return a copy")
+	}
+	floors := blobatar.ContrastFloors()
+	floors[0].Min = 99
+	if blobatar.ContrastFloors()[0].Min != 1.25 {
+		t.Fatal("ContrastFloors must return a copy")
+	}
+	tints := blobatar.TintTargets()
+	tints[0].Tint.H = -1
+	if blobatar.TintTargets()[0].Tint.H != blobatar.HotTint().H {
+		t.Fatal("TintTargets must return a copy")
 	}
 }
