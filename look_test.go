@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/bloodf/blobatar"
@@ -167,6 +168,159 @@ func TestLookValidateRejects(t *testing.T) {
 				t.Fatalf("expected rejection for %s", tc.name)
 			}
 		})
+	}
+}
+
+func TestLookValidateTypedLook(t *testing.T) {
+	hue := 42.5
+	motion := false
+	look := blobatar.Look{
+		Version: 1,
+		Base: blobatar.Appearance{
+			Shape: "sun", Expression: "happy", Background: "circle",
+			Hue: &hue, Tone: "ink",
+			Palette: &blobatar.BotPalette{Head: "#AABBCC", Eye: "#000000", Bg: "#FFFFFF"},
+			Motion:  &motion,
+		},
+		States: map[string]blobatar.Appearance{
+			"error": {Expression: "mad"},
+		},
+	}
+
+	got, err := blobatar.ValidateLook(look)
+	if err != nil {
+		t.Fatalf("Look value: %v", err)
+	}
+	if got.Base.Shape != "sun" || got.States["error"].Expression != "mad" {
+		t.Fatalf("Look value: %+v", got)
+	}
+
+	ptr := &look
+	got2, err := blobatar.ValidateLook(ptr)
+	if err != nil {
+		t.Fatalf("*Look: %v", err)
+	}
+	if got2.Base.Shape != "sun" {
+		t.Fatalf("*Look: %+v", got2)
+	}
+
+	var nilPtr *blobatar.Look
+	if _, err := blobatar.ValidateLook(nilPtr); err == nil {
+		t.Fatal("typed nil *Look must be rejected")
+	} else if !strings.Contains(err.Error(), "look must be an object") {
+		t.Fatalf("typed nil *Look: got %q", err)
+	}
+}
+
+func TestLookValidateTypedNonFiniteHue(t *testing.T) {
+	cases := []struct {
+		name string
+		hue  float64
+		want string // substring that names the value
+	}{
+		{"NaN", math.NaN(), "NaN"},
+		{"+Inf", math.Inf(1), "+Inf"},
+		{"-Inf", math.Inf(-1), "-Inf"},
+	}
+	for _, tc := range cases {
+		t.Run("base/"+tc.name, func(t *testing.T) {
+			h := tc.hue
+			look := blobatar.Look{Version: 1, Base: blobatar.Appearance{Hue: &h}}
+			_, err := blobatar.ValidateLook(look)
+			if err == nil {
+				t.Fatal("expected error")
+			}
+			msg := err.Error()
+			if !strings.Contains(msg, "look.base.hue") {
+				t.Fatalf("error must name field look.base.hue; got %q", msg)
+			}
+			if !strings.Contains(msg, tc.want) {
+				t.Fatalf("error must name value %s; got %q", tc.want, msg)
+			}
+		})
+		t.Run("state/"+tc.name, func(t *testing.T) {
+			h := tc.hue
+			look := blobatar.Look{
+				Version: 1,
+				Base:    blobatar.Appearance{},
+				States:  map[string]blobatar.Appearance{"error": {Hue: &h}},
+			}
+			_, err := blobatar.ValidateLook(&look)
+			if err == nil {
+				t.Fatal("expected error")
+			}
+			msg := err.Error()
+			if !strings.Contains(msg, "look.states.error.hue") {
+				t.Fatalf("error must name field look.states.error.hue; got %q", msg)
+			}
+			if !strings.Contains(msg, tc.want) {
+				t.Fatalf("error must name value %s; got %q", tc.want, msg)
+			}
+		})
+	}
+}
+
+func TestLookValidateMalformedJSONNumberVersion(t *testing.T) {
+	_, err := blobatar.ValidateLook(map[string]any{
+		"version": json.Number("nope"),
+		"base":    map[string]any{},
+	})
+	if err == nil {
+		t.Fatal("expected rejection for malformed json.Number version")
+	}
+	if !strings.Contains(err.Error(), "look.version") {
+		t.Fatalf("got %q", err)
+	}
+}
+
+func TestLookResolveTypedLook(t *testing.T) {
+	missing, err := blobatar.ResolveAppearance(lookTestID, nil, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	look := blobatar.Look{
+		Version: 1,
+		Base:    blobatar.Appearance{Expression: "happy", Background: "circle"},
+	}
+	fromVal, err := blobatar.ResolveAppearance(lookTestID, look, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fromVal.Expression != "happy" || fromVal.Background != "circle" {
+		t.Fatalf("Look value: %+v", fromVal)
+	}
+	if fromVal.Shape != missing.Shape || fromVal.Hue != missing.Hue || fromVal.Palette != missing.Palette {
+		t.Fatalf("identity drifted via Look value")
+	}
+
+	fromPtr, err := blobatar.ResolveAppearance(lookTestID, &look, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !resolvedEqual(fromVal, fromPtr) {
+		t.Fatalf("*Look != Look value:\n%+v\n%+v", fromVal, fromPtr)
+	}
+
+	var nilPtr *blobatar.Look
+	fromNilPtr, err := blobatar.ResolveAppearance(lookTestID, nilPtr, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !resolvedEqual(missing, fromNilPtr) {
+		t.Fatalf("typed nil *Look must match missing look:\n%+v\n%+v", missing, fromNilPtr)
+	}
+
+	nan := math.NaN()
+	_, err = blobatar.ResolveAppearance(lookTestID, blobatar.Look{
+		Version: 1,
+		Base:    blobatar.Appearance{Hue: &nan},
+	}, "")
+	if err == nil {
+		t.Fatal("expected NaN hue rejection via ResolveAppearance")
+	}
+	if !strings.Contains(err.Error(), "look.base.hue") || !strings.Contains(err.Error(), "NaN") {
+		t.Fatalf("got %q", err)
 	}
 }
 

@@ -75,11 +75,8 @@ var tonePosition = map[string]float64{
 // Upper edges of the tone swatches; each band excludes its edge.
 var toneEdges = []float64{0.2, 0.36, 0.62, 0.8, 0.93, 1}
 
-var hexRRGGBB = regexpMustCompileHex()
-
-func regexpMustCompileHex() *hexMatcher {
-	return &hexMatcher{}
-}
+// hexColorRE matches uppercase #RRGGBB. Hand-rolled matcher, not a regexp.
+var hexColorRE hexMatcher
 
 // hexMatcher avoids importing regexp just for one anchored pattern.
 type hexMatcher struct{}
@@ -124,73 +121,8 @@ func failLook(path, message string) error {
 }
 
 func isRecord(v any) (map[string]any, bool) {
-	switch m := v.(type) {
-	case map[string]any:
-		return m, true
-	case Look:
-		// Re-encode so validation walks the same shape as JSON input.
-		b, err := json.Marshal(lookWireFrom(m))
-		if err != nil {
-			return nil, false
-		}
-		var out map[string]any
-		if err := json.Unmarshal(b, &out); err != nil {
-			return nil, false
-		}
-		return out, true
-	case *Look:
-		if m == nil {
-			return nil, false
-		}
-		return isRecord(*m)
-	default:
-		return nil, false
-	}
-}
-
-// lookWire is the JSON shape of Look (omitempty for sparse fields).
-type lookWire struct {
-	Version int                       `json:"version"`
-	Base    appearanceWire            `json:"base"`
-	States  map[string]appearanceWire `json:"states,omitempty"`
-}
-
-type appearanceWire struct {
-	Shape      string       `json:"shape,omitempty"`
-	Expression string       `json:"expression,omitempty"`
-	Background string       `json:"background,omitempty"`
-	Hue        *float64     `json:"hue,omitempty"`
-	Tone       string       `json:"tone,omitempty"`
-	Palette    *paletteWire `json:"palette,omitempty"`
-	Motion     *bool        `json:"motion,omitempty"`
-}
-
-type paletteWire struct {
-	Head string `json:"head,omitempty"`
-	Eye  string `json:"eye,omitempty"`
-	Bg   string `json:"bg,omitempty"`
-}
-
-func lookWireFrom(l Look) lookWire {
-	w := lookWire{Version: l.Version, Base: appearanceWireFrom(l.Base)}
-	if l.States != nil {
-		w.States = make(map[string]appearanceWire, len(l.States))
-		for k, a := range l.States {
-			w.States[k] = appearanceWireFrom(a)
-		}
-	}
-	return w
-}
-
-func appearanceWireFrom(a Appearance) appearanceWire {
-	w := appearanceWire{
-		Shape: a.Shape, Expression: a.Expression, Background: a.Background,
-		Hue: a.Hue, Tone: a.Tone, Motion: a.Motion,
-	}
-	if a.Palette != nil {
-		w.Palette = &paletteWire{Head: a.Palette.Head, Eye: a.Palette.Eye, Bg: a.Palette.Bg}
-	}
-	return w
+	m, ok := v.(map[string]any)
+	return m, ok
 }
 
 func onlyKeys(o map[string]any, allowed []string, path string) error {
@@ -246,8 +178,11 @@ func parseAppearance(v any, path string) (Appearance, error) {
 	}
 	if raw, has := o["hue"]; has {
 		h, ok := asFloat64(raw)
-		if !ok || !isFinite(h) || h < 0 || h >= 360 {
+		if !ok {
 			return Appearance{}, failLook(path+".hue", "must be a finite number in [0, 360)")
+		}
+		if err := checkHueValue(h, path+".hue"); err != nil {
+			return Appearance{}, err
 		}
 		out.Hue = &h
 	}
@@ -273,7 +208,7 @@ func parseAppearance(v any, path string) (Appearance, error) {
 				continue
 			}
 			cs, ok := c.(string)
-			if !ok || !hexRRGGBB.match(cs) {
+			if !ok || !hexColorRE.match(cs) {
 				return Appearance{}, failLook(path+".palette."+k, "must be uppercase #RRGGBB")
 			}
 			switch k {
@@ -299,6 +234,31 @@ func parseAppearance(v any, path string) (Appearance, error) {
 
 func isFinite(h float64) bool {
 	return !math.IsNaN(h) && !math.IsInf(h, 0)
+}
+
+func formatFloatSpecial(h float64) string {
+	switch {
+	case math.IsNaN(h):
+		return "NaN"
+	case math.IsInf(h, 1):
+		return "+Inf"
+	case math.IsInf(h, -1):
+		return "-Inf"
+	default:
+		return fmt.Sprint(h)
+	}
+}
+
+// checkHueValue requires a finite number in [0, 360). Non-finite values name
+// the field path and the concrete value (NaN / +Inf / -Inf).
+func checkHueValue(h float64, path string) error {
+	if !isFinite(h) {
+		return failLook(path, fmt.Sprintf("must be a finite number in [0, 360) (got %s)", formatFloatSpecial(h)))
+	}
+	if h < 0 || h >= 360 {
+		return failLook(path, "must be a finite number in [0, 360)")
+	}
+	return nil
 }
 
 func asFloat64(v any) (float64, bool) {
@@ -337,7 +297,23 @@ func versionIsOne(v any) bool {
 
 // ValidateLook is a strict structural check of an untrusted look; it returns a
 // canonical copy. Accepts map[string]any (typical JSON), Look, or *Look.
+// Typed Look values are validated directly (no JSON round-trip), so a NaN/Inf
+// hue yields an error that names the field and the non-finite value.
 func ValidateLook(input any) (Look, error) {
+	switch v := input.(type) {
+	case Look:
+		return validateTypedLook(v)
+	case *Look:
+		if v == nil {
+			return Look{}, failLook("look", "must be an object")
+		}
+		return validateTypedLook(*v)
+	default:
+		return validateMapLook(input)
+	}
+}
+
+func validateMapLook(input any) (Look, error) {
 	o, ok := isRecord(input)
 	if !ok {
 		return Look{}, failLook("look", "must be an object")
@@ -375,6 +351,93 @@ func ValidateLook(input any) (Look, error) {
 		look.States = states
 	}
 	return look, nil
+}
+
+func validateTypedLook(in Look) (Look, error) {
+	if in.Version != lookVersion {
+		return Look{}, failLook("look.version", "must be 1")
+	}
+	base, err := validateTypedAppearance(in.Base, "look.base")
+	if err != nil {
+		return Look{}, err
+	}
+	out := Look{Version: lookVersion, Base: base}
+	if in.States == nil {
+		return out, nil
+	}
+	states := make(map[string]Appearance, len(in.States))
+	for k, a := range in.States {
+		if !oneOf(k, avatarStates) {
+			return Look{}, failLook("look.states", fmt.Sprintf("has unknown field %q", k))
+		}
+		ca, err := validateTypedAppearance(a, "look.states."+k)
+		if err != nil {
+			return Look{}, err
+		}
+		states[k] = ca
+	}
+	out.States = states
+	return out, nil
+}
+
+func validateTypedAppearance(a Appearance, path string) (Appearance, error) {
+	out := Appearance{}
+	if a.Shape != "" {
+		if !oneOf(a.Shape, shapes) {
+			return Appearance{}, failLook(path+".shape", "must be one of "+strings.Join(shapes, ", "))
+		}
+		out.Shape = a.Shape
+	}
+	if a.Expression != "" {
+		if !oneOf(a.Expression, expressions) {
+			return Appearance{}, failLook(path+".expression", "must be one of "+strings.Join(expressions, ", "))
+		}
+		out.Expression = a.Expression
+	}
+	if a.Background != "" {
+		if !oneOf(a.Background, backgrounds) {
+			return Appearance{}, failLook(path+".background", "must be one of "+strings.Join(backgrounds, ", "))
+		}
+		out.Background = a.Background
+	}
+	if a.Hue != nil {
+		if err := checkHueValue(*a.Hue, path+".hue"); err != nil {
+			return Appearance{}, err
+		}
+		h := *a.Hue
+		out.Hue = &h
+	}
+	if a.Tone != "" {
+		if !oneOf(a.Tone, tones) {
+			return Appearance{}, failLook(path+".tone", "must be one of "+strings.Join(tones, ", "))
+		}
+		out.Tone = a.Tone
+	}
+	if a.Palette != nil {
+		pal := &BotPalette{}
+		for _, ch := range []struct {
+			name, val string
+			set       *string
+		}{
+			{"head", a.Palette.Head, &pal.Head},
+			{"eye", a.Palette.Eye, &pal.Eye},
+			{"bg", a.Palette.Bg, &pal.Bg},
+		} {
+			if ch.val == "" {
+				continue
+			}
+			if !hexColorRE.match(ch.val) {
+				return Appearance{}, failLook(path+".palette."+ch.name, "must be uppercase #RRGGBB")
+			}
+			*ch.set = ch.val
+		}
+		out.Palette = pal
+	}
+	if a.Motion != nil {
+		m := *a.Motion
+		out.Motion = &m
+	}
+	return out, nil
 }
 
 // effective merges base with an optional state override; palette channels merge
@@ -443,7 +506,8 @@ func ResolveAppearance(botID string, look any, state string) (ResolvedAppearance
 		return ResolvedAppearance{}, fmt.Errorf("unknown avatar state %q", state)
 	}
 	var app Appearance
-	if look != nil {
+	// Untyped nil and typed nil *Look both mean "no look" (seeded defaults).
+	if look != nil && !isNilLookPointer(look) {
 		checked, err := ValidateLook(look)
 		if err != nil {
 			return ResolvedAppearance{}, err
@@ -451,6 +515,11 @@ func ResolveAppearance(botID string, look any, state string) (ResolvedAppearance
 		app = effective(checked, state)
 	}
 	return resolveFromAppearance(botID, app), nil
+}
+
+func isNilLookPointer(v any) bool {
+	p, ok := v.(*Look)
+	return ok && p == nil
 }
 
 func resolveFromAppearance(botID string, a Appearance) ResolvedAppearance {
