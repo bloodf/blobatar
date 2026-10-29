@@ -9,35 +9,36 @@ import (
 // Skip-gated parity suites. Each skip names the follow-up epic it waits on.
 
 func TestTraitsPaletteParity(t *testing.T) {
-	t.Skip("blobatar epic: traits+palette")
+	t.Skip("blobatar epic G2: traits+palette (bloodf/beans#379)")
 	_, err := golden.LoadGen2()
 	if err != nil {
 		t.Fatal(err)
 	}
-	// TODO(blobatar epic: traits+palette): assert Traits/tone/hue for every corpus seed.
+	// TODO(G2): assert Traits/tone/hue for every corpus seed.
 }
 
 func TestShapeGeometryParity(t *testing.T) {
-	t.Skip("blobatar epic: shape geometry")
-	// TODO(blobatar epic: shape geometry): compare Geometry() to geometry.jsonl within 1e-9.
+	t.Skip("blobatar epic G3: shape geometry (bloodf/beans#379)")
+	// TODO(G3): compare Geometry() to geometry.jsonl within 1e-9.
 }
 
 func TestExpressionsLookParity(t *testing.T) {
-	t.Skip("blobatar epic: expressions+look")
-	// TODO(blobatar epic: expressions+look): ValidateLook / ResolveAppearance / 14 expressions.
+	t.Skip("blobatar epic G4b: expressions+eyes (bloodf/beans#379)")
+	// TODO(G4b): 14 expressions and every state vs geometry fixtures within 1e-9.
+	// ValidateLook / ResolveAppearance / looks.json are covered by TestLook* (G4a).
 }
 
 func TestSVGRenderParity(t *testing.T) {
-	t.Skip("blobatar epic: SVG render")
+	t.Skip("blobatar epic G5: SVG render (bloodf/beans#379)")
 	g, err := golden.LoadGen2()
 	if err != nil {
 		t.Fatal(err)
 	}
 	_ = g
-	// TODO(blobatar epic: SVG render): SVG() byte-exact against every gen2.txt markup line.
+	// TODO(G5): SVG() byte-exact against every gen2.txt markup line.
 }
 
 func TestMorphFrameParity(t *testing.T) {
-	t.Skip("blobatar epic: morph+frame")
-	// TODO(blobatar epic: morph+frame): Lerp and Frame match frames.jsonl within 1e-9.
+	t.Skip("blobatar epic G6: morph+frame (bloodf/beans#379)")
+	// TODO(G6): Lerp and Frame match frames.jsonl within 1e-9.
 }

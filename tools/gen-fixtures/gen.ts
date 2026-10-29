@@ -24,6 +24,7 @@ const {
   botAvatarGeometry,
   avatarFrame,
   interpolateAvatarGeometry,
+  resolveBotAppearance,
   BOT_SHAPES,
   BOT_EXPRESSIONS,
   BOT_TONES,
@@ -215,6 +216,145 @@ writeJSONL(join(outDir, "geometry.jsonl"), geoLines);
 writeJSONL(join(outDir, "frames.jsonl"), [...frameLines, ...lerpLines]);
 writeJSONL(join(outDir, "normalize.jsonl"), normalizeCases);
 
+// looks.json — BotLook enum lists. TS is source of truth until Beans swaps to Go.
+// Stable key order; LF; trailing newline. Written to package root and golden/.
+const looks = {
+  states: [...BOT_AVATAR_STATES],
+  shapes: [...BOT_SHAPES],
+  expressions: [...BOT_EXPRESSIONS],
+  backgrounds: [...BOT_BACKGROUNDS],
+  tones: [...BOT_TONES],
+};
+const looksBody = JSON.stringify(looks, null, 2) + "\n";
+const looksRoot = resolve(import.meta.dir, "../../looks.json");
+writeFileSync(looksRoot, looksBody, "utf8");
+writeFileSync(join(outDir, "looks.json"), looksBody, "utf8");
+
+// ResolveAppearance oracle rows from TS (G4a). Covers missing/partial/merge paths.
+const RESOLVE_ID = "6f1c2a90-bot";
+type ResolveLine = {
+  name: string;
+  botID: string;
+  look: BotLook | null;
+  state: string | null;
+  resolved: unknown;
+};
+const resolveLines: ResolveLine[] = [];
+const pushResolve = (
+  name: string,
+  botID: string,
+  look: BotLook | null,
+  state: string | null,
+) => {
+  const resolved =
+    state === null
+      ? resolveBotAppearance(botID, look)
+      : resolveBotAppearance(botID, look, state as (typeof BOT_AVATAR_STATES)[number]);
+  resolveLines.push({ name, botID, look, state, resolved });
+};
+
+pushResolve("missing-look", RESOLVE_ID, null, null);
+pushResolve("empty-base", RESOLVE_ID, look({}), null);
+pushResolve("null-state-idle-defaults", RESOLVE_ID, null, "idle");
+
+for (const shape of BOT_SHAPES) {
+  pushResolve(`shape-${shape}`, RESOLVE_ID, look({ shape }), null);
+}
+for (const tone of BOT_TONES) {
+  pushResolve(`tone-${tone}`, RESOLVE_ID, look({ tone }), null);
+}
+for (const background of BOT_BACKGROUNDS) {
+  pushResolve(`background-${background}`, RESOLVE_ID, look({ background }), null);
+}
+for (const expression of BOT_EXPRESSIONS) {
+  pushResolve(`expression-${expression}`, RESOLVE_ID, look({ expression }), null);
+}
+
+const mergeLook: BotLook = {
+  version: 1,
+  base: {
+    shape: "boxy",
+    hue: 120,
+    palette: { head: "#112233", eye: "#FFFFFF" },
+    motion: false,
+  },
+  states: { error: { expression: "mad", palette: { eye: "#EEEEEE" } } },
+};
+pushResolve("merge-error-state", RESOLVE_ID, mergeLook, "error");
+pushResolve("merge-idle-state", RESOLVE_ID, mergeLook, "idle");
+for (const state of BOT_AVATAR_STATES) {
+  pushResolve(`merge-state-${state}`, RESOLVE_ID, mergeLook, state);
+}
+
+pushResolve(
+  "partial-palette-head",
+  RESOLVE_ID,
+  look({ palette: { head: "#AABBCC" } }),
+  null,
+);
+pushResolve(
+  "partial-palette-eye-bg",
+  RESOLVE_ID,
+  look({ palette: { eye: "#010203", bg: "#FEFEFE" } }),
+  null,
+);
+pushResolve(
+  "expression-background-untouched-identity",
+  RESOLVE_ID,
+  look({ expression: "happy", background: "circle" }),
+  null,
+);
+pushResolve(
+  "motion-false",
+  RESOLVE_ID,
+  look({ motion: false }),
+  null,
+);
+pushResolve(
+  "full-canonical",
+  RESOLVE_ID,
+  {
+    version: 1,
+    base: {
+      shape: "sun",
+      expression: "happy",
+      background: "squircle",
+      hue: 359.5,
+      tone: "ink",
+      palette: { head: "#AABBCC", eye: "#000000", bg: "#FFFFFF" },
+      motion: false,
+    },
+    states: {
+      error: { expression: "mad", palette: { head: "#FF0000" } },
+      thinking: {},
+    },
+  },
+  null,
+);
+pushResolve(
+  "full-canonical-error",
+  RESOLVE_ID,
+  {
+    version: 1,
+    base: {
+      shape: "sun",
+      expression: "happy",
+      background: "squircle",
+      hue: 359.5,
+      tone: "ink",
+      palette: { head: "#AABBCC", eye: "#000000", bg: "#FFFFFF" },
+      motion: false,
+    },
+    states: {
+      error: { expression: "mad", palette: { head: "#FF0000" } },
+      thinking: {},
+    },
+  },
+  "error",
+);
+
+writeJSONL(join(outDir, "appearance_resolve.jsonl"), resolveLines);
+
 // SOURCE metadata. Bun version matches Beans CI's oven-sh/setup-bun@v2
 // (unpinned → latest); we pin the resolved version that produced these fixtures.
 const beansSha = (
@@ -243,11 +383,14 @@ console.log(
       frames: frameLines.length,
       lerps: lerpLines.length,
       normalize: normalizeCases.length,
+      resolve: resolveLines.length,
       hashes: {
         "gen2.txt": finger("gen2.txt"),
         "geometry.jsonl": finger("geometry.jsonl"),
         "frames.jsonl": finger("frames.jsonl"),
         "normalize.jsonl": finger("normalize.jsonl"),
+        "looks.json": finger("looks.json"),
+        "appearance_resolve.jsonl": finger("appearance_resolve.jsonl"),
       },
     },
     null,

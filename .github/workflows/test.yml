@@ -123,7 +123,11 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/regen
           cp -a testdata/golden /tmp/regen/committed
+          cp looks.json /tmp/regen/looks.json.committed
           bun tools/gen-fixtures/gen.ts "$PWD/beans"
           # Restore SOURCE (generator rewrites it) before comparing artifacts.
           cp /tmp/regen/committed/SOURCE testdata/golden/SOURCE
           bun tools/gen-fixtures/compare.ts /tmp/regen/committed testdata/golden
+          # Package-root looks.json must match the golden copy (and the regen).
+          cmp /tmp/regen/looks.json.committed looks.json
+          cmp looks.json testdata/golden/looks.json

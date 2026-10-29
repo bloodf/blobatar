@@ -6,6 +6,9 @@ Pins (`beans_sha`, Bun, generator command) live in `SOURCE`. Regenerate with:
 bun tools/gen-fixtures/gen.ts /path/to/beans
 ```
 
+Also writes package-root `looks.json` (BotLook enum lists) and
+`appearance_resolve.jsonl` (ResolveAppearance oracle from TS).
+
 ## gen2.txt provenance
 
 `gen2.txt` is copied from Beans `packages/beans-blobatar/test/golden/gen2.txt`

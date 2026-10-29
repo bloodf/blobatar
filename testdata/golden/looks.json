@@ -1,0 +1,53 @@
+{
+  "states": [
+    "idle",
+    "thinking",
+    "responding",
+    "working",
+    "waiting",
+    "retry",
+    "error"
+  ],
+  "shapes": [
+    "round",
+    "organic",
+    "boxy",
+    "capsule",
+    "nub",
+    "cloud",
+    "droplet",
+    "hexagon",
+    "sun",
+    "triangle"
+  ],
+  "expressions": [
+    "idle",
+    "happy",
+    "sad",
+    "mad",
+    "surprised",
+    "wink",
+    "sleepy",
+    "smug",
+    "unsure",
+    "scared",
+    "love",
+    "shy",
+    "sick",
+    "thinking"
+  ],
+  "backgrounds": [
+    "none",
+    "square",
+    "circle",
+    "squircle"
+  ],
+  "tones": [
+    "pastel",
+    "pale",
+    "mid",
+    "deep",
+    "bright",
+    "ink"
+  ]
+}
