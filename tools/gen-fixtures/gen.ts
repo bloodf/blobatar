@@ -20,6 +20,23 @@ if (!beansDir) {
 const pkg = resolve(beansDir, "packages/beans-blobatar");
 const outDir = resolve(import.meta.dir, "../../testdata/golden");
 
+// toneName is private in appearance.ts at the pinned Beans SHA. Temporarily
+// export it for import, then restore the file so a local Beans tree stays clean.
+const appearancePath = join(pkg, "appearance.ts");
+const appearanceOriginal = readFileSync(appearancePath, "utf8");
+let toneName: (v: number) => string;
+try {
+  if (/\nconst toneName =/.test(appearanceOriginal)) {
+    writeFileSync(
+      appearancePath,
+      appearanceOriginal.replace(/\nconst toneName =/, "\nexport const toneName ="),
+    );
+  }
+  ({ toneName } = await import(join(pkg, "appearance.ts")));
+} finally {
+  writeFileSync(appearancePath, appearanceOriginal);
+}
+
 const {
   botAvatarGeometry,
   avatarFrame,
@@ -34,13 +51,9 @@ const {
 const { SEEDS } = await import(join(pkg, "test/golden/corpus.ts"));
 const { normalizeSeed } = await import(join(pkg, "vendor/core/hash.ts"));
 const { traits } = await import(join(pkg, "vendor/core/traits.ts"));
-const { palette } = await import(join(pkg, "vendor/core/color.ts"));
-
-/** Upper edges of the tone swatches in vendor/core/color.ts; each band excludes its edge. */
-const TONE_EDGES = [0.2, 0.36, 0.62, 0.8, 0.93, 1] as const;
-const toneName = (v: number): string =>
-  BOT_TONES[TONE_EDGES.findIndex((edge) => v < edge)] ?? "pastel";
-
+const { palette, mixHex, fadeHex, tinted, TINTS } = await import(
+  join(pkg, "vendor/core/color.ts")
+);
 
 type BotLook = { version: 1; base: Record<string, unknown>; states?: Record<string, Record<string, unknown>> };
 const look = (base: Record<string, unknown>): BotLook => ({ version: 1, base });
@@ -104,10 +117,25 @@ type TraitsLine = {
   palette: { bg: string; head: string; eye: string };
 };
 
+/**
+ * Color blend / tint oracle rows (MixHex, FadeHex, Tinted), including errors.
+ * Non-finite FadeHex t values are encoded as strings because JSON has no NaN/Inf.
+ */
+type FadeT = number | "NaN" | "+Inf" | "-Inf";
+type ColorOracleLine =
+  | { fn: "mixHex"; a: string; b: string; t: number; hex: string }
+  | { fn: "fadeHex"; a: string; b: string; t: number; hex: string }
+  | { fn: "fadeHex"; a: string; b: string; t: FadeT; error: "bad_t" }
+  | { fn: "mixHex"; a: string; b: string; t: number; error: "bad_hex" }
+  | { fn: "fadeHex"; a: string; b: string; t: number; error: "bad_hex" }
+  | { fn: "tinted"; seed: string; tint: string; head: string; eye: string; headOut: string; eyeOut: string }
+  | { fn: "tinted"; head: string; eye: string; tint: string; error: "bad_hex" };
+
 const geoLines: GeoLine[] = [];
 const frameLines: FrameLine[] = [];
 const lerpLines: LerpLine[] = [];
 const traitsLines: TraitsLine[] = [];
+const colorOracleLines: ColorOracleLine[] = [];
 
 function pushGeometry(seed: string, l: BotLook | null, state: string) {
   const geometry = botAvatarGeometry(seed, l, state as never);
@@ -240,10 +268,68 @@ function writeJSONL(path: string, rows: object[]) {
   writeFileSync(path, body, "utf8");
 }
 
+// MixHex / FadeHex happy-path oracle (exact hex from TS).
+const mixFadeCases: [string, string, number][] = [
+  ["#112233", "#aabbcc", 0],
+  ["#112233", "#aabbcc", 0.5],
+  ["#112233", "#aabbcc", 1],
+  ["#000000", "#ffffff", 0],
+  ["#000000", "#ffffff", 0.5],
+  ["#000000", "#ffffff", 1],
+  ["#ff0000", "#00ff00", 0.25],
+  ["#ff0000", "#00ff00", 0.75],
+  ["#abcdef", "#abcdef", 0.7],
+  ["#AABBCC", "#112233", 0.33],
+];
+for (const [a, b, t] of mixFadeCases) {
+  colorOracleLines.push({ fn: "mixHex", a, b, t, hex: mixHex(a, b, t) });
+  colorOracleLines.push({ fn: "fadeHex", a, b, t, hex: fadeHex(a, b, t) });
+}
+
+// FadeHex t outside [0,1] / non-finite: Go must error (never malformed hex).
+// Recorded as error rows so regeneration stays deterministic; TS is not called.
+const badTCases: FadeT[] = [-1, 2, "NaN", "+Inf", "-Inf"];
+for (const t of badTCases) {
+  colorOracleLines.push({ fn: "fadeHex", a: "#000000", b: "#ffffff", t, error: "bad_t" });
+}
+
+// Malformed hex: Go MixHex/FadeHex/Tinted must error (stricter than TS parseInt).
+const badHex = ["", "#", "#12", "#zz", "#11223344", "abc", "aabbcc", "#gg0000"];
+for (const hex of badHex) {
+  colorOracleLines.push({ fn: "mixHex", a: hex, b: "#000000", t: 0.5, error: "bad_hex" });
+  colorOracleLines.push({ fn: "mixHex", a: "#000000", b: hex, t: 0.5, error: "bad_hex" });
+  colorOracleLines.push({ fn: "fadeHex", a: hex, b: "#ffffff", t: 0.5, error: "bad_hex" });
+  colorOracleLines.push({ fn: "fadeHex", a: "#ffffff", b: hex, t: 0.5, error: "bad_hex" });
+  colorOracleLines.push({ fn: "tinted", head: hex, eye: "#000000", tint: "hot", error: "bad_hex" });
+  colorOracleLines.push({ fn: "tinted", head: "#ffffff", eye: hex, tint: "hot", error: "bad_hex" });
+}
+
+// Tinted oracle for the first 32 corpus seeds × every named tint.
+const tintTable = TINTS as [string, { h: number; l: number; pull: number; c: number }][];
+for (const seed of SEEDS.slice(0, 32)) {
+  const t = traits(seed);
+  const hue = t.num("hue", 0, 360);
+  const tone = t("tone");
+  const p = palette(hue, true, tone);
+  for (const [tintName, tint] of tintTable) {
+    const [headOut, eyeOut] = tinted(p.head!, p.eye!, tint);
+    colorOracleLines.push({
+      fn: "tinted",
+      seed,
+      tint: tintName,
+      head: p.head!,
+      eye: p.eye!,
+      headOut,
+      eyeOut,
+    });
+  }
+}
+
 writeJSONL(join(outDir, "geometry.jsonl"), geoLines);
 writeJSONL(join(outDir, "frames.jsonl"), [...frameLines, ...lerpLines]);
 writeJSONL(join(outDir, "normalize.jsonl"), normalizeCases);
 writeJSONL(join(outDir, "traits.jsonl"), traitsLines);
+writeJSONL(join(outDir, "color_oracle.jsonl"), colorOracleLines);
 
 // looks.json — BotLook enum lists. TS is source of truth until Beans swaps to Go.
 // Stable key order; LF; trailing newline. Written to package root and golden/.
@@ -414,6 +500,7 @@ console.log(
       normalize: normalizeCases.length,
       resolve: resolveLines.length,
       traits: traitsLines.length,
+      colorOracle: colorOracleLines.length,
       hashes: {
         "gen2.txt": finger("gen2.txt"),
         "geometry.jsonl": finger("geometry.jsonl"),
@@ -422,6 +509,7 @@ console.log(
         "looks.json": finger("looks.json"),
         "appearance_resolve.jsonl": finger("appearance_resolve.jsonl"),
         "traits.jsonl": finger("traits.jsonl"),
+        "color_oracle.jsonl": finger("color_oracle.jsonl"),
       },
     },
     null,

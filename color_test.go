@@ -272,6 +272,41 @@ func TestMixHexFadeHex(t *testing.T) {
 	if mid != "#808080" {
 		t.Fatalf("FadeHex mid: %q want #808080", mid)
 	}
+	// Endpoints of the allowed t range.
+	for _, tVal := range []float64{0, 1} {
+		if _, err := blobatar.FadeHex("#000000", "#ffffff", tVal); err != nil {
+			t.Fatalf("FadeHex t=%v: %v", tVal, err)
+		}
+	}
+}
+
+func TestFadeHexRejectsBadT(t *testing.T) {
+	// NaN / ±Inf / outside [0,1] must error — never malformed hex like the
+	// TS oracle's "#0-ff0-ff0-ff" (t=-1) or "#NaNNaNNaN" (t=NaN).
+	bad := []float64{
+		math.NaN(),
+		math.Inf(1),
+		math.Inf(-1),
+		-1,
+		-0.0001,
+		1.0001,
+		2,
+		math.MaxFloat64,
+	}
+	for _, tVal := range bad {
+		got, err := blobatar.FadeHex("#000000", "#ffffff", tVal)
+		if err == nil {
+			t.Errorf("FadeHex(t=%v) = %q, want error", tVal, got)
+			continue
+		}
+		if got != "" {
+			t.Errorf("FadeHex(t=%v) returned %q with error %v", tVal, got, err)
+		}
+		// Must never look like a hex string with '-', 'N', or 3+ digit channels.
+		if len(got) != 0 && (len(got) != 7 || got[0] != '#') {
+			t.Errorf("FadeHex(t=%v) leaked malformed %q", tVal, got)
+		}
+	}
 }
 
 func TestTintedHeatZero(t *testing.T) {

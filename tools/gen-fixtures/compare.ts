@@ -125,4 +125,5 @@ compareJSONL("geometry.jsonl");
 compareJSONL("frames.jsonl");
 compareJSONL("appearance_resolve.jsonl");
 compareJSONL("traits.jsonl");
+compareJSONL("color_oracle.jsonl");
 console.log("fixtures compare: OK");

@@ -69,6 +69,121 @@ func TestTraitsPaletteParity(t *testing.T) {
 	}
 }
 
+func TestColorOracleParity(t *testing.T) {
+	cases, err := golden.LoadColorOracle()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cases) == 0 {
+		t.Fatal("color_oracle.jsonl: empty")
+	}
+
+	tintOf := map[string]blobatar.Tint{
+		"hot":   blobatar.HotTint(),
+		"rose":  blobatar.RoseTint(),
+		"blush": blobatar.BlushTint(),
+		"bile":  blobatar.BileTint(),
+	}
+
+	for i, tc := range cases {
+		switch {
+		case tc.Error == "bad_t":
+			if tc.Fn != "fadeHex" {
+				t.Fatalf("%d: bad_t only valid for fadeHex, got %q", i, tc.Fn)
+			}
+			tv, err := tc.ParseT()
+			if err != nil {
+				t.Fatalf("%d: %v", i, err)
+			}
+			got, err := blobatar.FadeHex(tc.A, tc.B, tv)
+			if err == nil {
+				t.Errorf("%d: FadeHex bad_t=%v returned %q, want error", i, tv, got)
+			} else if got != "" {
+				t.Errorf("%d: FadeHex bad_t returned %q with error", i, got)
+			}
+
+		case tc.Error == "bad_hex":
+			switch tc.Fn {
+			case "mixHex":
+				tv, err := tc.ParseT()
+				if err != nil {
+					t.Fatalf("%d: %v", i, err)
+				}
+				got, err := blobatar.MixHex(tc.A, tc.B, tv)
+				if err == nil {
+					t.Errorf("%d: MixHex(%q,%q) = %q, want error", i, tc.A, tc.B, got)
+				}
+			case "fadeHex":
+				tv, err := tc.ParseT()
+				if err != nil {
+					t.Fatalf("%d: %v", i, err)
+				}
+				got, err := blobatar.FadeHex(tc.A, tc.B, tv)
+				if err == nil {
+					t.Errorf("%d: FadeHex(%q,%q) = %q, want error", i, tc.A, tc.B, got)
+				}
+			case "tinted":
+				tint, ok := tintOf[tc.Tint]
+				if !ok {
+					t.Fatalf("%d: unknown tint %q", i, tc.Tint)
+				}
+				h, e, err := blobatar.Tinted(tc.Head, tc.Eye, tint)
+				if err == nil {
+					t.Errorf("%d: Tinted(%q,%q) = %q,%q, want error", i, tc.Head, tc.Eye, h, e)
+				}
+			default:
+				t.Fatalf("%d: bad_hex for unknown fn %q", i, tc.Fn)
+			}
+
+		case tc.Fn == "mixHex":
+			tv, err := tc.ParseT()
+			if err != nil {
+				t.Fatalf("%d: %v", i, err)
+			}
+			got, err := blobatar.MixHex(tc.A, tc.B, tv)
+			if err != nil {
+				t.Errorf("%d: MixHex: %v", i, err)
+				continue
+			}
+			if got != tc.Hex {
+				t.Errorf("%d: MixHex(%q,%q,%v)=%q want %q", i, tc.A, tc.B, tv, got, tc.Hex)
+			}
+
+		case tc.Fn == "fadeHex":
+			tv, err := tc.ParseT()
+			if err != nil {
+				t.Fatalf("%d: %v", i, err)
+			}
+			got, err := blobatar.FadeHex(tc.A, tc.B, tv)
+			if err != nil {
+				t.Errorf("%d: FadeHex: %v", i, err)
+				continue
+			}
+			if got != tc.Hex {
+				t.Errorf("%d: FadeHex(%q,%q,%v)=%q want %q", i, tc.A, tc.B, tv, got, tc.Hex)
+			}
+
+		case tc.Fn == "tinted":
+			tint, ok := tintOf[tc.Tint]
+			if !ok {
+				t.Fatalf("%d: unknown tint %q", i, tc.Tint)
+			}
+			headOut, eyeOut, err := blobatar.Tinted(tc.Head, tc.Eye, tint)
+			if err != nil {
+				t.Errorf("%d: Tinted seed=%q tint=%q: %v", i, tc.Seed, tc.Tint, err)
+				continue
+			}
+			if headOut != tc.HeadOut || eyeOut != tc.EyeOut {
+				t.Errorf("%d: Tinted seed=%q tint=%q: got (%q,%q) want (%q,%q)",
+					i, tc.Seed, tc.Tint, headOut, eyeOut, tc.HeadOut, tc.EyeOut)
+			}
+
+		default:
+			t.Fatalf("%d: unhandled color oracle row fn=%q error=%q", i, tc.Fn, tc.Error)
+		}
+	}
+}
+
 func TestShapeGeometryParity(t *testing.T) {
 	t.Skip("blobatar epic G3: shape geometry (bloodf/beans#379)")
 	// TODO(G3): compare Geometry() to geometry.jsonl within 1e-9.
