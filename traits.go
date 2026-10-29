@@ -140,6 +140,8 @@ func ToneBandNames() []string {
 }
 
 // ToneName maps a unit tone float to its swatch name.
+// Tone() yields [0, 1), so the last edge (1) always matches in-band; the
+// fallthrough return (final name "ink") is only reached for v ≥ 1.
 func ToneName(v float64) string {
 	for i, edge := range toneEdges {
 		if v < edge {
