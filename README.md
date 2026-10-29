@@ -19,6 +19,7 @@ a later PR.
 |---|---|
 | SVG markup and SHA-256 tripwire hashes (`gen2.txt`) | byte-exact |
 | Seed hashes (`Normalize` + murmur-style stream) | exact `uint32` / float64 |
+| Traits / tone / hue / palette hex (`traits.jsonl`) | floats ε `1e-9`; hex exact |
 | Geometry (`geometry.jsonl`) | absolute ε `1e-9` |
 | Frames and lerps (`frames.jsonl`) | absolute ε `1e-9` |
 

@@ -5,6 +5,101 @@
 
 package blobatar
 
+import "math"
+
+// TraitOverrides maps trait keys to a fixed unit float in [0, 1) or a list of
+// candidate unit floats. A list means "any of these"; the key's own hash picks
+// the index. An empty list is the same as omitting the key.
+type TraitOverrides map[string]any
+
+// TraitReader addresses every value by a string key rather than drawing from a
+// sequential stream, so trait keys are an append-only namespace.
+type TraitReader struct {
+	state     uint32
+	overrides TraitOverrides
+}
+
+// Traits returns a trait reader for seed with Normalize applied and no overrides.
+func Traits(seed string) *TraitReader {
+	return NewTraits(seed, true, nil)
+}
+
+// NewTraits returns a trait reader. When normalize is true, the seed is passed
+// through Normalize first (matching vendor/core/traits.ts).
+func NewTraits(seed string, normalize bool, overrides TraitOverrides) *TraitReader {
+	return &TraitReader{state: seedState(seed, normalize), overrides: overrides}
+}
+
+// Float returns a uniform float in [0, 1) for key.
+func (t *TraitReader) Float(key string) float64 {
+	if t.overrides != nil {
+		if raw, ok := t.overrides[key]; ok {
+			switch v := raw.(type) {
+			case float64:
+				return clampUnit(v)
+			case []float64:
+				if len(v) == 0 {
+					break
+				}
+				i := int(math.Floor(stream(t.state, key) * float64(len(v))))
+				if i >= len(v) {
+					i = len(v) - 1
+				}
+				return clampUnit(v[i])
+			}
+		}
+	}
+	return stream(t.state, key)
+}
+
+func clampUnit(o float64) float64 {
+	// Matches traits.ts: o > 0 ? (o < 1 ? o : 0.999999) : 0
+	// NaN comparisons are false, so NaN becomes 0.
+	if o > 0 {
+		if o < 1 {
+			return o
+		}
+		return 0.999999
+	}
+	return 0
+}
+
+// Num returns a uniform float in [min, max).
+func (t *TraitReader) Num(key string, min, max float64) float64 {
+	return min + t.Float(key)*(max-min)
+}
+
+// Int returns a uniform integer in [min, max].
+func (t *TraitReader) Int(key string, min, max int) int {
+	return min + int(math.Floor(t.Float(key)*float64(max-min+1)))
+}
+
+// PickIndex returns the option index for key over n options (n > 0).
+func (t *TraitReader) PickIndex(key string, n int) int {
+	if n <= 0 {
+		return 0
+	}
+	i := int(math.Floor(t.Float(key) * float64(n)))
+	if i >= n {
+		return n - 1
+	}
+	return i
+}
+
+// Bool reports true with probability p (default 0.5 when p is omitted).
+func (t *TraitReader) Bool(key string, p ...float64) bool {
+	prob := 0.5
+	if len(p) > 0 {
+		prob = p[0]
+	}
+	return t.Float(key) < prob
+}
+
+// Jitter returns symmetric jitter in [-amount, amount).
+func (t *TraitReader) Jitter(key string, amount float64) float64 {
+	return (t.Float(key)*2 - 1) * amount
+}
+
 // Shape band upper edges from vendor/core/styles/blob.ts BANDS, in order.
 // pick(v) = first band with v < upper.
 var shapeBands = []struct {
@@ -23,15 +118,46 @@ var shapeBands = []struct {
 	{"triangle", 1},
 }
 
-// traitFloat returns the unit float for key under seed (normalized).
-func traitFloat(seed, key string) float64 {
-	return stream(seedState(seed, true), key)
+// ToneEdges are the upper edges of the tone swatches in vendor/core/color.ts.
+// Each band excludes its edge. Names mirror appearance.ts BOT_TONES.
+var ToneEdges = []float64{0.2, 0.36, 0.62, 0.8, 0.93, 1}
+
+// ToneNames are the BOT_TONES labels for ToneEdges.
+var ToneNames = []string{"pastel", "pale", "mid", "deep", "bright", "ink"}
+
+// ToneName maps a unit tone float to its swatch name.
+func ToneName(v float64) string {
+	for i, edge := range ToneEdges {
+		if v < edge {
+			return ToneNames[i]
+		}
+	}
+	return ToneNames[len(ToneNames)-1]
+}
+
+// Hue returns the seed's hue in [0, 360).
+func Hue(seed string) float64 {
+	return Traits(seed).Num("hue", 0, 360)
+}
+
+// Tone returns the seed's unit tone float in [0, 1).
+func Tone(seed string) float64 {
+	return Traits(seed).Float("tone")
+}
+
+// SeedPalette returns hue, tone, tone name, and the enforced palette for seed.
+func SeedPalette(seed string) (hue, tone float64, toneName string, p Palette) {
+	t := Traits(seed)
+	hue = t.Num("hue", 0, 360)
+	tone = t.Float("tone")
+	toneName = ToneName(tone)
+	p = PaletteColors(hue, true, tone)
+	return
 }
 
 // shapeForSeed returns the silhouette name the gen2 band table assigns to seed.
-// Only as much of Traits/layout as the histogram assertion needs.
 func shapeForSeed(seed string) string {
-	v := traitFloat(seed, "shape")
+	v := Traits(seed).Float("shape")
 	for _, b := range shapeBands {
 		if v < b.upper {
 			return b.name

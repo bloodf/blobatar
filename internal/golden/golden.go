@@ -128,3 +128,39 @@ func SourceField(key string) (string, error) {
 func SourceBeansSHA() (string, error) {
 	return SourceField("beans_sha")
 }
+
+// TraitsCase is one row of traits.jsonl (corpus seed → hue/tone/palette).
+type TraitsCase struct {
+	Seed     string  `json:"seed"`
+	Hue      float64 `json:"hue"`
+	Tone     float64 `json:"tone"`
+	ToneName string  `json:"toneName"`
+	Palette  struct {
+		BG   string `json:"bg"`
+		Head string `json:"head"`
+		Eye  string `json:"eye"`
+	} `json:"palette"`
+}
+
+// LoadTraits parses testdata/golden/traits.jsonl.
+func LoadTraits() ([]TraitsCase, error) {
+	raw, err := os.ReadFile(filepath.Join(Root(), "traits.jsonl"))
+	if err != nil {
+		return nil, err
+	}
+	var out []TraitsCase
+	sc := bufio.NewScanner(bytes.NewReader(raw))
+	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for sc.Scan() {
+		line := sc.Text()
+		if line == "" {
+			continue
+		}
+		var c TraitsCase
+		if err := json.Unmarshal([]byte(line), &c); err != nil {
+			return nil, fmt.Errorf("golden: traits.jsonl: %w", err)
+		}
+		out = append(out, c)
+	}
+	return out, sc.Err()
+}
