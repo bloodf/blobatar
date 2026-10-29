@@ -10,8 +10,9 @@ itself a vendored copy of [Alain00/blobatar](https://github.com/Alain00/blobatar
 until **v0.1.0**.
 
 **v0.1.0 scope:** static figures plus `Frame` and `Lerp`. React Native
-idle/morph worklets are out of scope. A `looks.json` for BotLook lists comes in
-a later PR.
+idle/morph worklets are out of scope. `looks.json` lists BotLook enums
+(generated from Beans TS via `tools/gen-fixtures`; TS remains source of truth
+until the Beans swap).
 
 ## Parity contract
 
