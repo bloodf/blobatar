@@ -20,23 +20,6 @@ if (!beansDir) {
 const pkg = resolve(beansDir, "packages/beans-blobatar");
 const outDir = resolve(import.meta.dir, "../../testdata/golden");
 
-// toneName is private in appearance.ts at the pinned Beans SHA. Temporarily
-// export it for import, then restore the file so a local Beans tree stays clean.
-const appearancePath = join(pkg, "appearance.ts");
-const appearanceOriginal = readFileSync(appearancePath, "utf8");
-let toneName: (v: number) => string;
-try {
-  if (/\nconst toneName =/.test(appearanceOriginal)) {
-    writeFileSync(
-      appearancePath,
-      appearanceOriginal.replace(/\nconst toneName =/, "\nexport const toneName ="),
-    );
-  }
-  ({ toneName } = await import(join(pkg, "appearance.ts")));
-} finally {
-  writeFileSync(appearancePath, appearanceOriginal);
-}
-
 const {
   botAvatarGeometry,
   avatarFrame,
@@ -54,6 +37,12 @@ const { traits } = await import(join(pkg, "vendor/core/traits.ts"));
 const { palette, mixHex, fadeHex, tinted, TINTS } = await import(
   join(pkg, "vendor/core/color.ts")
 );
+
+// toneName is private in appearance.ts at the pinned Beans SHA. Use the
+// exported resolveBotAppearance helper instead of editing the Beans checkout:
+// with a null look, resolved.tone is toneName(traits(seed)("tone")).
+const toneNameForSeed = (seed: string): string =>
+  resolveBotAppearance(seed, null).tone;
 
 type BotLook = { version: 1; base: Record<string, unknown>; states?: Record<string, Record<string, unknown>> };
 const look = (base: Record<string, unknown>): BotLook => ({ version: 1, base });
@@ -162,7 +151,7 @@ for (const seed of SEEDS) {
     seed,
     hue,
     tone,
-    toneName: toneName(tone),
+    toneName: toneNameForSeed(seed),
     palette: { bg: p.bg!, head: p.head!, eye: p.eye! },
   });
 }

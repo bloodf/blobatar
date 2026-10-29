@@ -61,27 +61,97 @@ func TestLookLooksJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Spot-check against appearance.test.ts / appearance.ts const arrays.
-	wantStates := []string{"idle", "thinking", "responding", "working", "waiting", "retry", "error"}
-	wantShapes := []string{"round", "organic", "boxy", "capsule", "nub", "cloud", "droplet", "hexagon", "sun", "triangle"}
-	wantExpr := []string{"idle", "happy", "sad", "mad", "surprised", "wink", "sleepy", "smug", "unsure", "scared", "love", "shy", "sick", "thinking"}
-	wantBg := []string{"none", "square", "circle", "squircle"}
-	wantTones := []string{"pastel", "pale", "mid", "deep", "bright", "ink"}
-	if !reflect.DeepEqual(doc.States, wantStates) {
-		t.Fatalf("states: got %#v", doc.States)
+	// Compare looks.json against the lists ValidateLook / ResolveAppearance use.
+	if !reflect.DeepEqual(doc.States, blobatar.AvatarStatesForTest()) {
+		t.Fatalf("states: json %#v vs package %#v", doc.States, blobatar.AvatarStatesForTest())
 	}
-	if !reflect.DeepEqual(doc.Shapes, wantShapes) {
-		t.Fatalf("shapes: got %#v", doc.Shapes)
+	if !reflect.DeepEqual(doc.Shapes, blobatar.ShapesForTest()) {
+		t.Fatalf("shapes: json %#v vs package %#v", doc.Shapes, blobatar.ShapesForTest())
 	}
-	if !reflect.DeepEqual(doc.Expressions, wantExpr) {
-		t.Fatalf("expressions: got %#v", doc.Expressions)
+	if !reflect.DeepEqual(doc.Expressions, blobatar.ExpressionsForTest()) {
+		t.Fatalf("expressions: json %#v vs package %#v", doc.Expressions, blobatar.ExpressionsForTest())
 	}
-	if !reflect.DeepEqual(doc.Backgrounds, wantBg) {
-		t.Fatalf("backgrounds: got %#v", doc.Backgrounds)
+	if !reflect.DeepEqual(doc.Backgrounds, blobatar.BackgroundsForTest()) {
+		t.Fatalf("backgrounds: json %#v vs package %#v", doc.Backgrounds, blobatar.BackgroundsForTest())
 	}
-	if !reflect.DeepEqual(doc.Tones, wantTones) {
-		t.Fatalf("tones: got %#v", doc.Tones)
+	if !reflect.DeepEqual(doc.Tones, blobatar.BotTonesForTest()) {
+		t.Fatalf("tones: json %#v vs package %#v", doc.Tones, blobatar.BotTonesForTest())
 	}
+}
+
+func TestLookJSONRoundTrip(t *testing.T) {
+	hue := 42.5
+	motion := false
+	look := blobatar.Look{
+		Version: 1,
+		Base: blobatar.Appearance{
+			Shape: "sun", Expression: "happy", Background: "circle",
+			Hue: &hue, Tone: "ink",
+			Palette: &blobatar.BotPalette{Head: "#AABBCC", Eye: "#000000", Bg: "#FFFFFF"},
+			Motion:  &motion,
+		},
+		States: map[string]blobatar.Appearance{
+			"error": {Expression: "mad", Palette: &blobatar.BotPalette{Head: "#FF0000"}},
+		},
+	}
+
+	raw, err := json.Marshal(look)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var decoded any
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	got, err := blobatar.ValidateLook(decoded)
+	if err != nil {
+		t.Fatalf("ValidateLook after marshal: %v\njson: %s", err, raw)
+	}
+	direct, err := blobatar.ValidateLook(look)
+	if err != nil {
+		t.Fatalf("ValidateLook typed: %v", err)
+	}
+	if !lookEqual(got, direct) {
+		t.Fatalf("round-trip Look differs from typed ValidateLook:\n got %+v\nwant %+v\njson %s", got, direct, raw)
+	}
+	if !lookEqual(got, look) {
+		t.Fatalf("round-trip Look changed values:\n got %+v\nwant %+v\njson %s", got, look, raw)
+	}
+}
+
+func lookEqual(a, b blobatar.Look) bool {
+	if a.Version != b.Version || !appearanceEqual(a.Base, b.Base) {
+		return false
+	}
+	if len(a.States) != len(b.States) {
+		return false
+	}
+	for k, av := range a.States {
+		bv, ok := b.States[k]
+		if !ok || !appearanceEqual(av, bv) {
+			return false
+		}
+	}
+	return true
+}
+
+func appearanceEqual(a, b blobatar.Appearance) bool {
+	if a.Shape != b.Shape || a.Expression != b.Expression || a.Background != b.Background || a.Tone != b.Tone {
+		return false
+	}
+	if (a.Hue == nil) != (b.Hue == nil) || (a.Hue != nil && *a.Hue != *b.Hue) {
+		return false
+	}
+	if (a.Motion == nil) != (b.Motion == nil) || (a.Motion != nil && *a.Motion != *b.Motion) {
+		return false
+	}
+	if (a.Palette == nil) != (b.Palette == nil) {
+		return false
+	}
+	if a.Palette != nil && *a.Palette != *b.Palette {
+		return false
+	}
+	return true
 }
 
 func TestLookValidateAcceptsCanonical(t *testing.T) {
@@ -411,6 +481,73 @@ func TestLookResolveStatePaletteMerge(t *testing.T) {
 		if _, err := blobatar.ResolveAppearance(lookTestID, look, s); err != nil {
 			t.Fatalf("state %s: %v", s, err)
 		}
+	}
+}
+
+func TestLookResolveStateOverrides(t *testing.T) {
+	look := mustJSON(t, `{
+		"version": 1,
+		"base": {
+			"shape": "boxy",
+			"expression": "happy",
+			"background": "square",
+			"hue": 120,
+			"tone": "pale",
+			"motion": true
+		},
+		"states": {
+			"error": {
+				"shape": "sun",
+				"expression": "mad",
+				"background": "circle",
+				"hue": 200,
+				"tone": "ink",
+				"motion": false
+			}
+		}
+	}`)
+
+	base, err := blobatar.ResolveAppearance(lookTestID, look, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if base.Shape != "boxy" || base.Expression != "happy" || base.Background != "square" ||
+		base.Hue != 120 || base.Tone != "pale" || !base.Motion {
+		t.Fatalf("base: %+v", base)
+	}
+
+	over, err := blobatar.ResolveAppearance(lookTestID, look, "error")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if over.Shape != "sun" {
+		t.Fatalf("shape override: got %q", over.Shape)
+	}
+	if over.Expression != "mad" {
+		t.Fatalf("expression override: got %q", over.Expression)
+	}
+	if over.Background != "circle" {
+		t.Fatalf("background override: got %q", over.Background)
+	}
+	if over.Hue != 200 {
+		t.Fatalf("hue override: got %v", over.Hue)
+	}
+	if over.Tone != "ink" {
+		t.Fatalf("tone override: got %q", over.Tone)
+	}
+	if over.Motion {
+		t.Fatalf("motion false-over-true: got %v", over.Motion)
+	}
+}
+
+func TestLookResolveFromAppearancePaletteColorsError(t *testing.T) {
+	nan := math.NaN()
+	_, err := blobatar.ResolveFromAppearanceForTest(lookTestID, blobatar.Appearance{Hue: &nan})
+	if err == nil {
+		t.Fatal("expected PaletteColors error for non-finite hue")
+	}
+	if !strings.Contains(err.Error(), "non-finite") && !strings.Contains(err.Error(), "ToHex") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

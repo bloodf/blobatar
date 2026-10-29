@@ -18,28 +18,28 @@ const lookVersion = 1
 
 // Appearance is one sparse BotAppearance (base or per-state override).
 type Appearance struct {
-	Shape      string   // BotShape; empty = unset
-	Expression string   // BotExpression; empty = unset
-	Background string   // BotBackground; empty = unset
-	Hue        *float64 // [0, 360); nil = unset
-	Tone       string   // BotTone; empty = unset
-	Palette    *BotPalette
-	Motion     *bool // nil = unset
+	Shape      string      `json:"shape,omitempty"`      // BotShape; empty = unset
+	Expression string      `json:"expression,omitempty"` // BotExpression; empty = unset
+	Background string      `json:"background,omitempty"` // BotBackground; empty = unset
+	Hue        *float64    `json:"hue,omitempty"`        // [0, 360); nil = unset
+	Tone       string      `json:"tone,omitempty"`       // BotTone; empty = unset
+	Palette    *BotPalette `json:"palette,omitempty"`
+	Motion     *bool       `json:"motion,omitempty"` // nil = unset
 }
 
 // BotPalette holds optional uppercase #RRGGBB channels on a look document.
 // Distinct from Palette (color.go), which is the filled lowercase seed ramp.
 type BotPalette struct {
-	Head string // empty = unset
-	Eye  string // empty = unset
-	Bg   string // empty = unset
+	Head string `json:"head,omitempty"` // empty = unset
+	Eye  string `json:"eye,omitempty"`  // empty = unset
+	Bg   string `json:"bg,omitempty"`   // empty = unset
 }
 
 // Look is a versioned BotLook document.
 type Look struct {
-	Version int
-	Base    Appearance
-	States  map[string]Appearance // nil if omitted
+	Version int                   `json:"version"`
+	Base    Appearance            `json:"base"`
+	States  map[string]Appearance `json:"states,omitempty"` // nil if omitted
 }
 
 // ResolvedAppearance is the fully filled appearance ResolveAppearance returns.
@@ -506,6 +506,7 @@ func isNilLookPointer(v any) bool {
 func resolveFromAppearance(botID string, a Appearance) (ResolvedAppearance, error) {
 	hue := Hue(botID)
 	toneUnit := Tone(botID)
+	// Tone(botID) is in [0, 1); ToneName's v≥1 fallback is unreachable on this path.
 	tone := ToneName(toneUnit)
 	tonePos := toneUnit
 	if a.Hue != nil {
@@ -534,6 +535,9 @@ func resolveFromAppearance(botID string, a Appearance) (ResolvedAppearance, erro
 		motion = *a.Motion
 	}
 
+	// PaletteColors fails on non-finite hue/tone. ValidateLook rejects those
+	// before ResolveAppearance reaches here; the branch is covered via the
+	// ResolveFromAppearanceForTest hook with a crafted Appearance.
 	seeded, err := PaletteColors(hue, true, tonePos)
 	if err != nil {
 		return ResolvedAppearance{}, err
