@@ -62,7 +62,10 @@ func TestToHexFromHexRoundTripKnown(t *testing.T) {
 	}
 
 	r := blobatar.Ramp(210, true, 0.5)
-	hex := blobatar.ToHex(r["head"])
+	hex, err := blobatar.ToHex(r["head"])
+	if err != nil {
+		t.Fatal(err)
+	}
 	if hex != "#00bcd3" {
 		t.Fatalf("ToHex(ramp 210 mid head)=%q want #00bcd3", hex)
 	}
@@ -78,7 +81,9 @@ func TestFromHexMalformed(t *testing.T) {
 	}{
 		{""},
 		{"#"},
+		{"#12"}, // 2 hex digits after #
 		{"#zz"},
+		{"#11223344"}, // 8 hex digits after #
 		{"abc"},
 		{"aabbcc"}, // bare rrggbb — leading '#' required
 		{"#abc"},
@@ -100,7 +105,8 @@ func TestFromHexMalformed(t *testing.T) {
 }
 
 func TestHexHelpersPropagateFromHexError(t *testing.T) {
-	bad := []string{"", "#", "#zz", "abc", "aabbcc"}
+	// FadeHex/MixHex/Tinted must not panic on short/empty strings (no raw slice).
+	bad := []string{"", "#", "#12", "#zz", "#11223344", "abc", "aabbcc"}
 	for _, hex := range bad {
 		if _, err := blobatar.MixHex(hex, "#000000", 0.5); err == nil {
 			t.Errorf("MixHex(%q, …) want error", hex)
@@ -150,32 +156,25 @@ func TestInGamutNaNInf(t *testing.T) {
 	}
 }
 
-func TestToHexNonFiniteClampsToZero(t *testing.T) {
-	// Portable across GOARCH: non-finite channels encode as 00, not a panic
-	// or platform-dependent int(NaN).
+func TestToHexNonFiniteErrors(t *testing.T) {
+	// Documented behavior: ToHex returns an error for NaN / ±Inf (never
+	// "#000000", never platform-dependent int(NaN)).
 	cases := []blobatar.Oklch{
 		{L: math.NaN(), C: 0, H: 0},
 		{L: math.Inf(1), C: 0, H: 0},
 		{L: math.Inf(-1), C: 0, H: 0},
 		{L: 0.5, C: math.NaN(), H: 0},
 		{L: 0.5, C: 0.1, H: math.Inf(1)},
+		{L: math.NaN(), C: math.NaN(), H: math.NaN()},
 	}
 	for _, c := range cases {
-		got := blobatar.ToHex(c)
-		if len(got) != 7 || got[0] != '#' {
-			t.Fatalf("ToHex(%+v)=%q, want #rrggbb", c, got)
+		got, err := blobatar.ToHex(c)
+		if err == nil {
+			t.Fatalf("ToHex(%+v) = %q, want error", c, got)
 		}
-		// Each channel must be a valid hex byte; non-finite path is 00.
-		for i := 1; i < 7; i++ {
-			ch := got[i]
-			if !((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f')) {
-				t.Fatalf("ToHex(%+v)=%q has non-hex digit", c, got)
-			}
+		if got != "" {
+			t.Fatalf("ToHex(%+v) returned %q with error %v", c, got, err)
 		}
-	}
-	// Pure NaN OKLCh collapses to black after the documented clamp.
-	if got := blobatar.ToHex(blobatar.Oklch{L: math.NaN(), C: math.NaN(), H: math.NaN()}); got != "#000000" {
-		t.Fatalf("NaN OKLCh ToHex=%q want #000000", got)
 	}
 }
 
@@ -202,7 +201,10 @@ func TestPaletteAlain(t *testing.T) {
 	if !almostEqual(tone, 0.1290204932447523, 1e-9) {
 		t.Fatalf("tone=%v", tone)
 	}
-	p := blobatar.PaletteColors(hue, true, tone)
+	p, err := blobatar.PaletteColors(hue, true, tone)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if p.BG != "#f3f4ed" || p.Head != "#d0d897" || p.Eye != "#0f1006" {
 		t.Fatalf("palette=%+v", p)
 	}
@@ -220,7 +222,10 @@ func TestRampFloorsAcrossHues(t *testing.T) {
 				t.Fatalf("hue %d %s/%s contrast %v < %v", h, f.FG, f.BG, got, f.Min)
 			}
 		}
-		p := blobatar.PaletteColors(float64(h), true, 0)
+		p, err := blobatar.PaletteColors(float64(h), true, 0)
+		if err != nil {
+			t.Fatalf("hue %d: %v", h, err)
+		}
 		for _, hex := range []string{p.BG, p.Head, p.Eye} {
 			if len(hex) != 7 || hex[0] != '#' {
 				t.Fatalf("bad hex %q at hue %d", hex, h)
@@ -270,7 +275,10 @@ func TestMixHexFadeHex(t *testing.T) {
 }
 
 func TestTintedHeatZero(t *testing.T) {
-	p := blobatar.PaletteColors(200, true, 0.5)
+	p, err := blobatar.PaletteColors(200, true, 0.5)
+	if err != nil {
+		t.Fatal(err)
+	}
 	hotHead, hotEye, err := blobatar.Tinted(p.Head, p.Eye, blobatar.HotTint())
 	if err != nil {
 		t.Fatal(err)

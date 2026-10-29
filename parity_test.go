@@ -35,7 +35,11 @@ func TestTraitsPaletteParity(t *testing.T) {
 		gotHue := tr.Num("hue", 0, 360)
 		gotTone := tr.Float("tone")
 		gotName := blobatar.ToneName(gotTone)
-		gotPal := blobatar.PaletteColors(gotHue, true, gotTone)
+		gotPal, err := blobatar.PaletteColors(gotHue, true, gotTone)
+		if err != nil {
+			t.Errorf("%q PaletteColors: %v", tc.Seed, err)
+			continue
+		}
 
 		if !closeEnough(gotHue, tc.Hue, floatEps) {
 			t.Errorf("%q hue: got %v want %v (Δ=%g)", tc.Seed, gotHue, tc.Hue, math.Abs(gotHue-tc.Hue))
@@ -53,7 +57,11 @@ func TestTraitsPaletteParity(t *testing.T) {
 		}
 
 		// SeedPalette must agree with the same oracle fields.
-		h2, t2, n2, p2 := blobatar.SeedPalette(tc.Seed)
+		h2, t2, n2, p2, err := blobatar.SeedPalette(tc.Seed)
+		if err != nil {
+			t.Errorf("%q SeedPalette: %v", tc.Seed, err)
+			continue
+		}
 		if !closeEnough(h2, tc.Hue, floatEps) || !closeEnough(t2, tc.Tone, floatEps) || n2 != tc.ToneName ||
 			p2.BG != tc.Palette.BG || p2.Head != tc.Palette.Head || p2.Eye != tc.Palette.Eye {
 			t.Errorf("%q SeedPalette mismatch (hue=%v tone=%v name=%q pal=%+v)", tc.Seed, h2, t2, n2, p2)

@@ -56,9 +56,13 @@ func toLinear(color Oklch) [3]float64 {
 }
 
 // inGamut reports whether linear-light sRGB components are in gamut.
-// NaN and ±Inf are out of gamut (matching TS: !(v >= lo && v <= hi)).
+// NaN and ±Inf are out of gamut (explicit check, plus TS-style
+// !(v >= lo && v <= hi) which also rejects non-finite values).
 func inGamut(rgb [3]float64) bool {
 	for _, v := range rgb {
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return false
+		}
 		if !(v >= -1e-4 && v <= 1+1e-4) {
 			return false
 		}
@@ -145,17 +149,20 @@ func EnsureContrast(fg, bg Oklch, min float64) Oklch {
 
 // ToHex encodes color as lowercase #rrggbb.
 //
-// Non-finite channel values (NaN, ±Inf) — whether from a non-finite OKLCh
-// input or from the transfer function — are treated as 0 before
-// int(math.Round(...)), so the result is portable across GOARCH (Go's
-// float64→int conversion of NaN is otherwise platform-dependent).
-func ToHex(color Oklch) string {
+// Non-finite OKLCh components (NaN, ±Inf) return an error — never a silent
+// "#000000" and never int(math.Round(NaN)), which is platform-dependent.
+// Callers that need a hex string must handle the error (MixHex/Tinted/
+// PaletteColors propagate or surface it).
+func ToHex(color Oklch) (string, error) {
+	if !isFinite(color.L) || !isFinite(color.C) || !isFinite(color.H) {
+		return "", fmt.Errorf("blobatar: ToHex: non-finite OKLCh component")
+	}
 	rgb := resolveColor(color)
 	out := make([]byte, 0, 7)
 	out = append(out, '#')
 	for _, v := range rgb {
 		if !isFinite(v) {
-			v = 0
+			return "", fmt.Errorf("blobatar: ToHex: non-finite channel after resolve")
 		}
 		s := 0.0
 		if v <= 0.0031308 {
@@ -164,7 +171,7 @@ func ToHex(color Oklch) string {
 			s = 1.055*math.Pow(v, 1/2.4) - 0.055
 		}
 		if !isFinite(s) {
-			s = 0
+			return "", fmt.Errorf("blobatar: ToHex: non-finite transfer result")
 		}
 		n := int(math.Round(s * 255))
 		if n < 0 {
@@ -177,7 +184,7 @@ func ToHex(color Oklch) string {
 		}
 		out = strconv.AppendInt(out, int64(n), 16)
 	}
-	return string(out)
+	return string(out), nil
 }
 
 func isHexDigit(c byte) bool {
@@ -263,7 +270,8 @@ func Mix(a, b Oklch, t float64) Oklch {
 }
 
 // MixHex blends two serialized colors in OKLab and returns lowercase #rrggbb.
-// Both a and b must be valid #RRGGBB (see FromHex); errors are propagated.
+// Both a and b must be valid #RRGGBB (see FromHex); FromHex/ToHex errors are
+// propagated.
 func MixHex(a, b string, t float64) (string, error) {
 	ca, err := FromHex(a)
 	if err != nil {
@@ -273,7 +281,7 @@ func MixHex(a, b string, t float64) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return ToHex(Mix(ca, cb, t)), nil
+	return ToHex(Mix(ca, cb, t))
 }
 
 // FadeHex blends two hex colors in sRGB (matching CSS transition: fill).
@@ -385,9 +393,15 @@ func Tinted(head, eye string, t Tint) (hotHead, hotEye string, err error) {
 	if he.L < hh.L {
 		dir = -1
 	}
-	headHex := ToHex(hh)
+	headHex, err := ToHex(hh)
+	if err != nil {
+		return "", "", err
+	}
 	for pass := 0; pass < 40; pass++ {
-		eyeHex := ToHex(he)
+		eyeHex, err := ToHex(he)
+		if err != nil {
+			return "", "", err
+		}
 		worst := math.Inf(1)
 		for i := 0; i <= 10; i++ {
 			tt := float64(i) / 10
@@ -421,7 +435,11 @@ func Tinted(head, eye string, t Tint) (hotHead, hotEye string, err error) {
 		}
 		he.L = l
 	}
-	return headHex, ToHex(he), nil
+	eyeOut, err := ToHex(he)
+	if err != nil {
+		return "", "", err
+	}
+	return headHex, eyeOut, nil
 }
 
 // toneSwatch is one entry of the authored tone set.
@@ -494,11 +512,20 @@ func Ramp(hue float64, enforce bool, tone float64) map[string]Oklch {
 
 // PaletteColors returns the hex palette for hue/tone (lowercase #rrggbb).
 // Named PaletteColors rather than Palette to leave the Palette type free.
-func PaletteColors(hue float64, enforce bool, tone float64) Palette {
+// Returns an error if any slot's ToHex fails (e.g. non-finite hue/tone).
+func PaletteColors(hue float64, enforce bool, tone float64) (Palette, error) {
 	r := Ramp(hue, enforce, tone)
-	return Palette{
-		BG:   ToHex(r["bg"]),
-		Head: ToHex(r["head"]),
-		Eye:  ToHex(r["eye"]),
+	bg, err := ToHex(r["bg"])
+	if err != nil {
+		return Palette{}, err
 	}
+	head, err := ToHex(r["head"])
+	if err != nil {
+		return Palette{}, err
+	}
+	eye, err := ToHex(r["eye"])
+	if err != nil {
+		return Palette{}, err
+	}
+	return Palette{BG: bg, Head: head, Eye: eye}, nil
 }

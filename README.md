@@ -34,13 +34,14 @@ resolved version), and the exact generator command.
 are compared structurally with absolute ε `1e-9`. `normalize.jsonl` is the JS
 oracle for `Normalize`.
 
-`FromHex` accepts only `#RRGGBB` / `#rrggbb` (leading `#` required; bare
-`rrggbb` is rejected — stricter than the TS oracle's silent `parseInt`). It
-returns an error for empty input, a lone `#`, `#zz`, wrong lengths, or non-hex
-characters, and never panics. `MixHex`, `FadeHex`, and `Tinted` propagate that
-error. Gamut checks treat NaN and ±Inf as out of gamut. `ToHex` maps non-finite
-channel values to `0` before `int(math.Round(...))` so the result is portable
-across GOARCH.
+`FromHex` accepts only `#RRGGBB` / `#rrggbb` (leading `#` required; exactly 6
+hex digits after `#`; bare `rrggbb` is rejected — stricter than the TS
+oracle's silent `parseInt`). It returns an error for empty input, `"#"`,
+`"#12"`, `"#11223344"`, `"#zz"`, or non-hex characters, and never panics.
+`MixHex`, `FadeHex`, and `Tinted` validate before slicing and propagate
+errors. `inGamut` returns false for NaN/±Inf. `ToHex` returns an error for
+non-finite OKLCh components (never a silent `#000000`, never
+`int(math.Round(NaN))`).
 
 Authored tables (`hot`/`rose`/`blush`/`bile` tints, contrast floors, tone band
 edges/names) are unexported; use `HotTint`, `RoseTint`, `BlushTint`, `BileTint`,

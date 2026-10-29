@@ -160,12 +160,12 @@ func Tone(seed string) float64 {
 }
 
 // SeedPalette returns hue, tone, tone name, and the enforced palette for seed.
-func SeedPalette(seed string) (hue, tone float64, toneName string, p Palette) {
+func SeedPalette(seed string) (hue, tone float64, toneName string, p Palette, err error) {
 	t := Traits(seed)
 	hue = t.Num("hue", 0, 360)
 	tone = t.Float("tone")
 	toneName = ToneName(tone)
-	p = PaletteColors(hue, true, tone)
+	p, err = PaletteColors(hue, true, tone)
 	return
 }
 
