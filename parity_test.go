@@ -70,26 +70,27 @@ func TestTraitsPaletteParity(t *testing.T) {
 }
 
 func TestShapeGeometryParity(t *testing.T) {
-	t.Skip("blocked on groundwork G3: shape geometry")
-	// TODO(groundwork G3): compare Geometry() to geometry.jsonl within 1e-9.
+	t.Skip("blobatar epic G3: shape geometry (bloodf/beans#379)")
+	// TODO(G3): compare Geometry() to geometry.jsonl within 1e-9.
 }
 
 func TestExpressionsLookParity(t *testing.T) {
-	t.Skip("blocked on groundwork G4b: expressions+look")
-	// TODO(groundwork G4b): ValidateLook / ResolveAppearance / 14 expressions.
+	t.Skip("blobatar epic G4b: expressions+eyes (bloodf/beans#379)")
+	// TODO(G4b): 14 expressions and every state vs geometry fixtures within 1e-9.
+	// ValidateLook / ResolveAppearance / looks.json are covered by TestLook* (G4a).
 }
 
 func TestSVGRenderParity(t *testing.T) {
-	t.Skip("blocked on groundwork G5: SVG render")
+	t.Skip("blobatar epic G5: SVG render (bloodf/beans#379)")
 	g, err := golden.LoadGen2()
 	if err != nil {
 		t.Fatal(err)
 	}
 	_ = g
-	// TODO(groundwork G5): SVG() byte-exact against every gen2.txt markup line.
+	// TODO(G5): SVG() byte-exact against every gen2.txt markup line.
 }
 
 func TestMorphFrameParity(t *testing.T) {
-	t.Skip("blocked on groundwork G6: morph+frame")
-	// TODO(groundwork G6): Lerp and Frame match frames.jsonl within 1e-9.
+	t.Skip("blobatar epic G6: morph+frame (bloodf/beans#379)")
+	// TODO(G6): Lerp and Frame match frames.jsonl within 1e-9.
 }
