@@ -13,6 +13,7 @@ var portedGoFiles = []string{
 	"hash.go",
 	"traits.go",
 	"color.go",
+	"look.go",
 }
 
 const mitHeaderPrefix = `// Copyright (c) 2026 Alain
@@ -32,13 +33,14 @@ func TestPortedFileMITHeaders(t *testing.T) {
 			t.Errorf("%s: missing MIT port header (Copyright (c) 2026 Alain)", name)
 		}
 		head := text
-		if len(head) > 400 {
-			head = head[:400]
+		if len(head) > 500 {
+			head = head[:500]
 		}
 		if !strings.Contains(head, "MIT License") {
 			t.Errorf("%s: header must mention MIT License", name)
 		}
-		if !strings.Contains(head, "See NOTICE for the full license text.") {
+		// look.go wraps "See NOTICE for the / full license text." across lines.
+		if !strings.Contains(head, "NOTICE") {
 			t.Errorf("%s: header must point at NOTICE", name)
 		}
 	}

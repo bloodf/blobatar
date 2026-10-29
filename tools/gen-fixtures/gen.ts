@@ -20,21 +20,23 @@ if (!beansDir) {
 const pkg = resolve(beansDir, "packages/beans-blobatar");
 const outDir = resolve(import.meta.dir, "../../testdata/golden");
 
-// toneName is private in appearance.ts at the pinned Beans SHA. Export it on
-// the checkout (CI clones fresh) before any import so fixtures call the Beans
-// implementation rather than a copied TONE_EDGES table.
+// toneName is private in appearance.ts at the pinned Beans SHA. Temporarily
+// export it for import, then restore the file so a local Beans tree stays clean.
 const appearancePath = join(pkg, "appearance.ts");
-{
-  const src = readFileSync(appearancePath, "utf8");
-  if (/\nconst toneName =/.test(src)) {
+const appearanceOriginal = readFileSync(appearancePath, "utf8");
+let toneName: (v: number) => string;
+try {
+  if (/\nconst toneName =/.test(appearanceOriginal)) {
     writeFileSync(
       appearancePath,
-      src.replace(/\nconst toneName =/, "\nexport const toneName ="),
+      appearanceOriginal.replace(/\nconst toneName =/, "\nexport const toneName ="),
     );
   }
+  ({ toneName } = await import(join(pkg, "appearance.ts")));
+} finally {
+  writeFileSync(appearancePath, appearanceOriginal);
 }
 
-const { toneName } = await import(join(pkg, "appearance.ts"));
 const {
   botAvatarGeometry,
   avatarFrame,
