@@ -6,6 +6,10 @@ Pins (`beans_sha`, Bun, generator command) live in `SOURCE`. Regenerate with:
 bun tools/gen-fixtures/gen.ts /path/to/beans
 ```
 
+`traits.jsonl` is the corpus oracle for `Traits` / hue / tone / palette (1000
+seeds from Beans `test/golden/corpus.ts`). Floats compare at absolute ε `1e-9`;
+hex strings are exact.
+
 ## gen2.txt provenance
 
 `gen2.txt` is copied from Beans `packages/beans-blobatar/test/golden/gen2.txt`
