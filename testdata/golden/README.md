@@ -13,6 +13,9 @@ Also writes package-root `looks.json` (BotLook enum lists) and
 seeds from Beans `test/golden/corpus.ts`). Floats compare at absolute ε `1e-9`;
 hex strings are exact.
 
+`color_oracle.jsonl` pins `mixHex` / `fadeHex` / `tinted` (and Go error cases
+for bad hex and out-of-range `FadeHex` `t`). Success hex strings are exact.
+
 ## gen2.txt provenance
 
 `gen2.txt` is copied from Beans `packages/beans-blobatar/test/golden/gen2.txt`

@@ -1,0 +1,201 @@
+{"fn":"mixHex","a":"#112233","b":"#aabbcc","t":0,"hex":"#112233"}
+{"fn":"fadeHex","a":"#112233","b":"#aabbcc","t":0,"hex":"#112233"}
+{"fn":"mixHex","a":"#112233","b":"#aabbcc","t":0.5,"hex":"#586a7b"}
+{"fn":"fadeHex","a":"#112233","b":"#aabbcc","t":0.5,"hex":"#5e6f80"}
+{"fn":"mixHex","a":"#112233","b":"#aabbcc","t":1,"hex":"#aabbcc"}
+{"fn":"fadeHex","a":"#112233","b":"#aabbcc","t":1,"hex":"#aabbcc"}
+{"fn":"mixHex","a":"#000000","b":"#ffffff","t":0,"hex":"#000000"}
+{"fn":"fadeHex","a":"#000000","b":"#ffffff","t":0,"hex":"#000000"}
+{"fn":"mixHex","a":"#000000","b":"#ffffff","t":0.5,"hex":"#636363"}
+{"fn":"fadeHex","a":"#000000","b":"#ffffff","t":0.5,"hex":"#808080"}
+{"fn":"mixHex","a":"#000000","b":"#ffffff","t":1,"hex":"#ffffff"}
+{"fn":"fadeHex","a":"#000000","b":"#ffffff","t":1,"hex":"#ffffff"}
+{"fn":"mixHex","a":"#ff0000","b":"#00ff00","t":0.25,"hex":"#ed7300"}
+{"fn":"fadeHex","a":"#ff0000","b":"#00ff00","t":0.25,"hex":"#bf4000"}
+{"fn":"mixHex","a":"#ff0000","b":"#00ff00","t":0.75,"hex":"#a0d500"}
+{"fn":"fadeHex","a":"#ff0000","b":"#00ff00","t":0.75,"hex":"#40bf00"}
+{"fn":"mixHex","a":"#abcdef","b":"#abcdef","t":0.7,"hex":"#abcdef"}
+{"fn":"fadeHex","a":"#abcdef","b":"#abcdef","t":0.7,"hex":"#abcdef"}
+{"fn":"mixHex","a":"#AABBCC","b":"#112233","t":0.33,"hex":"#738496"}
+{"fn":"fadeHex","a":"#AABBCC","b":"#112233","t":0.33,"hex":"#78899a"}
+{"fn":"fadeHex","a":"#000000","b":"#ffffff","t":-1,"error":"bad_t"}
+{"fn":"fadeHex","a":"#000000","b":"#ffffff","t":2,"error":"bad_t"}
+{"fn":"fadeHex","a":"#000000","b":"#ffffff","t":"NaN","error":"bad_t"}
+{"fn":"fadeHex","a":"#000000","b":"#ffffff","t":"+Inf","error":"bad_t"}
+{"fn":"fadeHex","a":"#000000","b":"#ffffff","t":"-Inf","error":"bad_t"}
+{"fn":"mixHex","a":"","b":"#000000","t":0.5,"error":"bad_hex"}
+{"fn":"mixHex","a":"#000000","b":"","t":0.5,"error":"bad_hex"}
+{"fn":"fadeHex","a":"","b":"#ffffff","t":0.5,"error":"bad_hex"}
+{"fn":"fadeHex","a":"#ffffff","b":"","t":0.5,"error":"bad_hex"}
+{"fn":"tinted","head":"","eye":"#000000","tint":"hot","error":"bad_hex"}
+{"fn":"tinted","head":"#ffffff","eye":"","tint":"hot","error":"bad_hex"}
+{"fn":"mixHex","a":"#","b":"#000000","t":0.5,"error":"bad_hex"}
+{"fn":"mixHex","a":"#000000","b":"#","t":0.5,"error":"bad_hex"}
+{"fn":"fadeHex","a":"#","b":"#ffffff","t":0.5,"error":"bad_hex"}
+{"fn":"fadeHex","a":"#ffffff","b":"#","t":0.5,"error":"bad_hex"}
+{"fn":"tinted","head":"#","eye":"#000000","tint":"hot","error":"bad_hex"}
+{"fn":"tinted","head":"#ffffff","eye":"#","tint":"hot","error":"bad_hex"}
+{"fn":"mixHex","a":"#12","b":"#000000","t":0.5,"error":"bad_hex"}
+{"fn":"mixHex","a":"#000000","b":"#12","t":0.5,"error":"bad_hex"}
+{"fn":"fadeHex","a":"#12","b":"#ffffff","t":0.5,"error":"bad_hex"}
+{"fn":"fadeHex","a":"#ffffff","b":"#12","t":0.5,"error":"bad_hex"}
+{"fn":"tinted","head":"#12","eye":"#000000","tint":"hot","error":"bad_hex"}
+{"fn":"tinted","head":"#ffffff","eye":"#12","tint":"hot","error":"bad_hex"}
+{"fn":"mixHex","a":"#zz","b":"#000000","t":0.5,"error":"bad_hex"}
+{"fn":"mixHex","a":"#000000","b":"#zz","t":0.5,"error":"bad_hex"}
+{"fn":"fadeHex","a":"#zz","b":"#ffffff","t":0.5,"error":"bad_hex"}
+{"fn":"fadeHex","a":"#ffffff","b":"#zz","t":0.5,"error":"bad_hex"}
+{"fn":"tinted","head":"#zz","eye":"#000000","tint":"hot","error":"bad_hex"}
+{"fn":"tinted","head":"#ffffff","eye":"#zz","tint":"hot","error":"bad_hex"}
+{"fn":"mixHex","a":"#11223344","b":"#000000","t":0.5,"error":"bad_hex"}
+{"fn":"mixHex","a":"#000000","b":"#11223344","t":0.5,"error":"bad_hex"}
+{"fn":"fadeHex","a":"#11223344","b":"#ffffff","t":0.5,"error":"bad_hex"}
+{"fn":"fadeHex","a":"#ffffff","b":"#11223344","t":0.5,"error":"bad_hex"}
+{"fn":"tinted","head":"#11223344","eye":"#000000","tint":"hot","error":"bad_hex"}
+{"fn":"tinted","head":"#ffffff","eye":"#11223344","tint":"hot","error":"bad_hex"}
+{"fn":"mixHex","a":"abc","b":"#000000","t":0.5,"error":"bad_hex"}
+{"fn":"mixHex","a":"#000000","b":"abc","t":0.5,"error":"bad_hex"}
+{"fn":"fadeHex","a":"abc","b":"#ffffff","t":0.5,"error":"bad_hex"}
+{"fn":"fadeHex","a":"#ffffff","b":"abc","t":0.5,"error":"bad_hex"}
+{"fn":"tinted","head":"abc","eye":"#000000","tint":"hot","error":"bad_hex"}
+{"fn":"tinted","head":"#ffffff","eye":"abc","tint":"hot","error":"bad_hex"}
+{"fn":"mixHex","a":"aabbcc","b":"#000000","t":0.5,"error":"bad_hex"}
+{"fn":"mixHex","a":"#000000","b":"aabbcc","t":0.5,"error":"bad_hex"}
+{"fn":"fadeHex","a":"aabbcc","b":"#ffffff","t":0.5,"error":"bad_hex"}
+{"fn":"fadeHex","a":"#ffffff","b":"aabbcc","t":0.5,"error":"bad_hex"}
+{"fn":"tinted","head":"aabbcc","eye":"#000000","tint":"hot","error":"bad_hex"}
+{"fn":"tinted","head":"#ffffff","eye":"aabbcc","tint":"hot","error":"bad_hex"}
+{"fn":"mixHex","a":"#gg0000","b":"#000000","t":0.5,"error":"bad_hex"}
+{"fn":"mixHex","a":"#000000","b":"#gg0000","t":0.5,"error":"bad_hex"}
+{"fn":"fadeHex","a":"#gg0000","b":"#ffffff","t":0.5,"error":"bad_hex"}
+{"fn":"fadeHex","a":"#ffffff","b":"#gg0000","t":0.5,"error":"bad_hex"}
+{"fn":"tinted","head":"#gg0000","eye":"#000000","tint":"hot","error":"bad_hex"}
+{"fn":"tinted","head":"#ffffff","eye":"#gg0000","tint":"hot","error":"bad_hex"}
+{"fn":"tinted","seed":"user-0","tint":"hot","head":"#e5d1dd","eye":"#150c12","headOut":"#fa695e","eyeOut":"#150c12"}
+{"fn":"tinted","seed":"user-0","tint":"rose","head":"#e5d1dd","eye":"#150c12","headOut":"#ff96bb","eyeOut":"#150c12"}
+{"fn":"tinted","seed":"user-0","tint":"blush","head":"#e5d1dd","eye":"#150c12","headOut":"#ffbfc5","eyeOut":"#150c12"}
+{"fn":"tinted","seed":"user-0","tint":"bile","head":"#e5d1dd","eye":"#150c12","headOut":"#7cc274","eyeOut":"#150c12"}
+{"fn":"tinted","seed":"alain1@example.com","tint":"hot","head":"#e0953d","eye":"#150e06","headOut":"#e5554c","eyeOut":"#150e06"}
+{"fn":"tinted","seed":"alain1@example.com","tint":"rose","head":"#e0953d","eye":"#150e06","headOut":"#f376a5","eyeOut":"#150e06"}
+{"fn":"tinted","seed":"alain1@example.com","tint":"blush","head":"#e0953d","eye":"#150e06","headOut":"#ff8f9e","eyeOut":"#150e06"}
+{"fn":"tinted","seed":"alain1@example.com","tint":"bile","head":"#e0953d","eye":"#150e06","headOut":"#66af5f","eyeOut":"#150e06"}
+{"fn":"tinted","seed":"3c6ef3623c6ef3623c6ef3623c6ef362","tint":"hot","head":"#243e37","eye":"#edf8f4","headOut":"#ae1c1d","eyeOut":"#edf8f4"}
+{"fn":"tinted","seed":"3c6ef3623c6ef3623c6ef3623c6ef362","tint":"rose","head":"#243e37","eye":"#edf8f4","headOut":"#b63f71","eyeOut":"#edf8f4"}
+{"fn":"tinted","seed":"3c6ef3623c6ef3623c6ef3623c6ef362","tint":"blush","head":"#243e37","eye":"#edf8f4","headOut":"#a0545f","eyeOut":"#edf8f4"}
+{"fn":"tinted","seed":"3c6ef3623c6ef3623c6ef3623c6ef362","tint":"bile","head":"#243e37","eye":"#edf8f4","headOut":"#3a7e33","eyeOut":"#edf8f4"}
+{"fn":"tinted","seed":"Team Rocket 3","tint":"hot","head":"#1a89e4","eye":"#091018","headOut":"#d5473f","eyeOut":"#03080f"}
+{"fn":"tinted","seed":"Team Rocket 3","tint":"rose","head":"#1a89e4","eye":"#091018","headOut":"#e36596","eyeOut":"#091018"}
+{"fn":"tinted","seed":"Team Rocket 3","tint":"blush","head":"#1a89e4","eye":"#091018","headOut":"#f56f85","eyeOut":"#091018"}
+{"fn":"tinted","seed":"Team Rocket 3","tint":"bile","head":"#1a89e4","eye":"#091018","headOut":"#48a540","eyeOut":"#091018"}
+{"fn":"tinted","seed":"café-4","tint":"hot","head":"#99b54d","eye":"#0e1107","headOut":"#e5554c","eyeOut":"#0e1107"}
+{"fn":"tinted","seed":"café-4","tint":"rose","head":"#99b54d","eye":"#0e1107","headOut":"#f376a6","eyeOut":"#0e1107"}
+{"fn":"tinted","seed":"café-4","tint":"blush","head":"#99b54d","eye":"#0e1107","headOut":"#ff8f9f","eyeOut":"#0e1107"}
+{"fn":"tinted","seed":"café-4","tint":"bile","head":"#99b54d","eye":"#0e1107","headOut":"#67af5f","eyeOut":"#0e1107"}
+{"fn":"tinted","seed":"Ünïcødé 5","tint":"hot","head":"#0095b8","eye":"#061116","headOut":"#d5473f","eyeOut":"#01090d"}
+{"fn":"tinted","seed":"Ünïcødé 5","tint":"rose","head":"#0095b8","eye":"#061116","headOut":"#e26796","eyeOut":"#061116"}
+{"fn":"tinted","seed":"Ünïcødé 5","tint":"blush","head":"#0095b8","eye":"#061116","headOut":"#df828e","eyeOut":"#061116"}
+{"fn":"tinted","seed":"Ünïcødé 5","tint":"bile","head":"#0095b8","eye":"#061116","headOut":"#5ca155","eyeOut":"#061116"}
+{"fn":"tinted","seed":"🦊6🌱","tint":"hot","head":"#97e0ff","eye":"#061116","headOut":"#f9685d","eyeOut":"#061116"}
+{"fn":"tinted","seed":"🦊6🌱","tint":"rose","head":"#97e0ff","eye":"#061116","headOut":"#ff93b9","eyeOut":"#061116"}
+{"fn":"tinted","seed":"🦊6🌱","tint":"blush","head":"#97e0ff","eye":"#061116","headOut":"#ffbcc3","eyeOut":"#061116"}
+{"fn":"tinted","seed":"🦊6🌱","tint":"bile","head":"#97e0ff","eye":"#061116","headOut":"#7ac173","eyeOut":"#061116"}
+{"fn":"tinted","seed":"7","tint":"hot","head":"#243c46","eye":"#edf7fc","headOut":"#ae1c1d","eyeOut":"#edf7fc"}
+{"fn":"tinted","seed":"7","tint":"rose","head":"#243c46","eye":"#edf7fc","headOut":"#b63f71","eyeOut":"#edf7fc"}
+{"fn":"tinted","seed":"7","tint":"blush","head":"#243c46","eye":"#edf7fc","headOut":"#a0555f","eyeOut":"#edf7fc"}
+{"fn":"tinted","seed":"7","tint":"bile","head":"#243c46","eye":"#edf7fc","headOut":"#3a7f33","eyeOut":"#f8fdff"}
+{"fn":"tinted","seed":"00000000-0000-4000-8000-000000000008","tint":"hot","head":"#e5d1dd","eye":"#150c12","headOut":"#fa695e","eyeOut":"#150c12"}
+{"fn":"tinted","seed":"00000000-0000-4000-8000-000000000008","tint":"rose","head":"#e5d1dd","eye":"#150c12","headOut":"#ff96bb","eyeOut":"#150c12"}
+{"fn":"tinted","seed":"00000000-0000-4000-8000-000000000008","tint":"blush","head":"#e5d1dd","eye":"#150c12","headOut":"#ffbfc5","eyeOut":"#150c12"}
+{"fn":"tinted","seed":"00000000-0000-4000-8000-000000000008","tint":"bile","head":"#e5d1dd","eye":"#150c12","headOut":"#7cc274","eyeOut":"#150c12"}
+{"fn":"tinted","seed":"  Mixed Case 9  ","tint":"hot","head":"#c6d2ff","eye":"#0c0f18","headOut":"#f9685d","eyeOut":"#0c0f18"}
+{"fn":"tinted","seed":"  Mixed Case 9  ","tint":"rose","head":"#c6d2ff","eye":"#0c0f18","headOut":"#ff93b9","eyeOut":"#0c0f18"}
+{"fn":"tinted","seed":"  Mixed Case 9  ","tint":"blush","head":"#c6d2ff","eye":"#0c0f18","headOut":"#ffbcc3","eyeOut":"#0c0f18"}
+{"fn":"tinted","seed":"  Mixed Case 9  ","tint":"bile","head":"#c6d2ff","eye":"#0c0f18","headOut":"#7ac173","eyeOut":"#0c0f18"}
+{"fn":"tinted","seed":"user-10","tint":"hot","head":"#d1dcc9","eye":"#0c1108","headOut":"#fa695e","eyeOut":"#0c1108"}
+{"fn":"tinted","seed":"user-10","tint":"rose","head":"#d1dcc9","eye":"#0c1108","headOut":"#ff96bb","eyeOut":"#0c1108"}
+{"fn":"tinted","seed":"user-10","tint":"blush","head":"#d1dcc9","eye":"#0c1108","headOut":"#ffbfc5","eyeOut":"#0c1108"}
+{"fn":"tinted","seed":"user-10","tint":"bile","head":"#d1dcc9","eye":"#0c1108","headOut":"#7cc274","eyeOut":"#0c1108"}
+{"fn":"tinted","seed":"alain11@example.com","tint":"hot","head":"#ffcb6d","eye":"#140f06","headOut":"#f9685d","eyeOut":"#140f06"}
+{"fn":"tinted","seed":"alain11@example.com","tint":"rose","head":"#ffcb6d","eye":"#140f06","headOut":"#ff93b9","eyeOut":"#140f06"}
+{"fn":"tinted","seed":"alain11@example.com","tint":"blush","head":"#ffcb6d","eye":"#140f06","headOut":"#ffbcc3","eyeOut":"#140f06"}
+{"fn":"tinted","seed":"alain11@example.com","tint":"bile","head":"#ffcb6d","eye":"#140f06","headOut":"#7ac173","eyeOut":"#140f06"}
+{"fn":"tinted","seed":"6a99b44c6a99b44c6a99b44c6a99b44c","tint":"hot","head":"#ffc2c7","eye":"#170c0d","headOut":"#f9685d","eyeOut":"#170c0d"}
+{"fn":"tinted","seed":"6a99b44c6a99b44c6a99b44c6a99b44c","tint":"rose","head":"#ffc2c7","eye":"#170c0d","headOut":"#ff93b9","eyeOut":"#170c0d"}
+{"fn":"tinted","seed":"6a99b44c6a99b44c6a99b44c6a99b44c","tint":"blush","head":"#ffc2c7","eye":"#170c0d","headOut":"#ffbcc3","eyeOut":"#170c0d"}
+{"fn":"tinted","seed":"6a99b44c6a99b44c6a99b44c6a99b44c","tint":"bile","head":"#ffc2c7","eye":"#170c0d","headOut":"#7ac173","eyeOut":"#170c0d"}
+{"fn":"tinted","seed":"Team Rocket 13","tint":"hot","head":"#34364a","eye":"#f3f4fd","headOut":"#ae1c1d","eyeOut":"#f3f4fd"}
+{"fn":"tinted","seed":"Team Rocket 13","tint":"rose","head":"#34364a","eye":"#f3f4fd","headOut":"#b63f71","eyeOut":"#f3f4fd"}
+{"fn":"tinted","seed":"Team Rocket 13","tint":"blush","head":"#34364a","eye":"#f3f4fd","headOut":"#a0545f","eyeOut":"#f3f4fd"}
+{"fn":"tinted","seed":"Team Rocket 13","tint":"bile","head":"#34364a","eye":"#f3f4fd","headOut":"#3a7e33","eyeOut":"#fbfbff"}
+{"fn":"tinted","seed":"café-14","tint":"hot","head":"#52f5b8","eye":"#07120d","headOut":"#f9685d","eyeOut":"#07120d"}
+{"fn":"tinted","seed":"café-14","tint":"rose","head":"#52f5b8","eye":"#07120d","headOut":"#ff93b9","eyeOut":"#07120d"}
+{"fn":"tinted","seed":"café-14","tint":"blush","head":"#52f5b8","eye":"#07120d","headOut":"#ffbcc3","eyeOut":"#07120d"}
+{"fn":"tinted","seed":"café-14","tint":"bile","head":"#52f5b8","eye":"#07120d","headOut":"#6bc562","eyeOut":"#07120d"}
+{"fn":"tinted","seed":"Ünïcødé 15","tint":"hot","head":"#cbddce","eye":"#09120b","headOut":"#fa695e","eyeOut":"#09120b"}
+{"fn":"tinted","seed":"Ünïcødé 15","tint":"rose","head":"#cbddce","eye":"#09120b","headOut":"#ff96bb","eyeOut":"#09120b"}
+{"fn":"tinted","seed":"Ünïcødé 15","tint":"blush","head":"#cbddce","eye":"#09120b","headOut":"#ffbfc5","eyeOut":"#09120b"}
+{"fn":"tinted","seed":"Ünïcødé 15","tint":"bile","head":"#cbddce","eye":"#09120b","headOut":"#7bc274","eyeOut":"#09120b"}
+{"fn":"tinted","seed":"🦊16🌱","tint":"hot","head":"#e184bf","eye":"#160c12","headOut":"#e5554c","eyeOut":"#160c12"}
+{"fn":"tinted","seed":"🦊16🌱","tint":"rose","head":"#e184bf","eye":"#160c12","headOut":"#f376a6","eyeOut":"#160c12"}
+{"fn":"tinted","seed":"🦊16🌱","tint":"blush","head":"#e184bf","eye":"#160c12","headOut":"#ff8f9f","eyeOut":"#160c12"}
+{"fn":"tinted","seed":"🦊16🌱","tint":"bile","head":"#e184bf","eye":"#160c12","headOut":"#67af5f","eyeOut":"#160c12"}
+{"fn":"tinted","seed":"17","tint":"hot","head":"#ffcb74","eye":"#140e06","headOut":"#f9685d","eyeOut":"#140e06"}
+{"fn":"tinted","seed":"17","tint":"rose","head":"#ffcb74","eye":"#140e06","headOut":"#ff93b9","eyeOut":"#140e06"}
+{"fn":"tinted","seed":"17","tint":"blush","head":"#ffcb74","eye":"#140e06","headOut":"#ffbcc3","eyeOut":"#140e06"}
+{"fn":"tinted","seed":"17","tint":"bile","head":"#ffcb74","eye":"#140e06","headOut":"#7ac173","eyeOut":"#140e06"}
+{"fn":"tinted","seed":"00000000-0000-4000-8000-000000000018","tint":"hot","head":"#fcc49a","eye":"#160d07","headOut":"#f7675c","eyeOut":"#160d07"}
+{"fn":"tinted","seed":"00000000-0000-4000-8000-000000000018","tint":"rose","head":"#fcc49a","eye":"#160d07","headOut":"#ff90b8","eyeOut":"#160d07"}
+{"fn":"tinted","seed":"00000000-0000-4000-8000-000000000018","tint":"blush","head":"#fcc49a","eye":"#160d07","headOut":"#ffb9c0","eyeOut":"#160d07"}
+{"fn":"tinted","seed":"00000000-0000-4000-8000-000000000018","tint":"bile","head":"#fcc49a","eye":"#160d07","headOut":"#79bf72","eyeOut":"#160d07"}
+{"fn":"tinted","seed":"  Mixed Case 19  ","tint":"hot","head":"#ffbdbf","eye":"#170c0c","headOut":"#f7665c","eyeOut":"#170c0c"}
+{"fn":"tinted","seed":"  Mixed Case 19  ","tint":"rose","head":"#ffbdbf","eye":"#170c0c","headOut":"#ff90b8","eyeOut":"#170c0c"}
+{"fn":"tinted","seed":"  Mixed Case 19  ","tint":"blush","head":"#ffbdbf","eye":"#170c0c","headOut":"#ffb9c0","eyeOut":"#170c0c"}
+{"fn":"tinted","seed":"  Mixed Case 19  ","tint":"bile","head":"#ffbdbf","eye":"#170c0c","headOut":"#79bf71","eyeOut":"#170c0c"}
+{"fn":"tinted","seed":"user-20","tint":"hot","head":"#00bfc4","eye":"#051213","headOut":"#e5554c","eyeOut":"#051213"}
+{"fn":"tinted","seed":"user-20","tint":"rose","head":"#00bfc4","eye":"#051213","headOut":"#f376a6","eyeOut":"#051213"}
+{"fn":"tinted","seed":"user-20","tint":"blush","head":"#00bfc4","eye":"#051213","headOut":"#fa93a0","eyeOut":"#051213"}
+{"fn":"tinted","seed":"user-20","tint":"bile","head":"#00bfc4","eye":"#051213","headOut":"#69af62","eyeOut":"#051213"}
+{"fn":"tinted","seed":"alain21@example.com","tint":"hot","head":"#8073e3","eye":"#0f0e18","headOut":"#d5473f","eyeOut":"#07060f"}
+{"fn":"tinted","seed":"alain21@example.com","tint":"rose","head":"#8073e3","eye":"#0f0e18","headOut":"#e36596","eyeOut":"#0f0e18"}
+{"fn":"tinted","seed":"alain21@example.com","tint":"blush","head":"#8073e3","eye":"#0f0e18","headOut":"#f56f85","eyeOut":"#0f0e18"}
+{"fn":"tinted","seed":"alain21@example.com","tint":"bile","head":"#8073e3","eye":"#0f0e18","headOut":"#49a541","eyeOut":"#0f0e18"}
+{"fn":"tinted","seed":"98c4753698c4753698c4753698c47536","tint":"hot","head":"#ffb9f7","eye":"#140c14","headOut":"#f9685d","eyeOut":"#140c14"}
+{"fn":"tinted","seed":"98c4753698c4753698c4753698c47536","tint":"rose","head":"#ffb9f7","eye":"#140c14","headOut":"#ff93b9","eyeOut":"#140c14"}
+{"fn":"tinted","seed":"98c4753698c4753698c4753698c47536","tint":"blush","head":"#ffb9f7","eye":"#140c14","headOut":"#ffbcc3","eyeOut":"#140c14"}
+{"fn":"tinted","seed":"98c4753698c4753698c4753698c47536","tint":"bile","head":"#ffb9f7","eye":"#140c14","headOut":"#7ac173","eyeOut":"#140c14"}
+{"fn":"tinted","seed":"Team Rocket 23","tint":"hot","head":"#a3b244","eye":"#0f1107","headOut":"#e5554c","eyeOut":"#0f1107"}
+{"fn":"tinted","seed":"Team Rocket 23","tint":"rose","head":"#a3b244","eye":"#0f1107","headOut":"#f376a6","eyeOut":"#0f1107"}
+{"fn":"tinted","seed":"Team Rocket 23","tint":"blush","head":"#a3b244","eye":"#0f1107","headOut":"#ff8f9e","eyeOut":"#0f1107"}
+{"fn":"tinted","seed":"Team Rocket 23","tint":"bile","head":"#a3b244","eye":"#0f1107","headOut":"#67af5f","eyeOut":"#0f1107"}
+{"fn":"tinted","seed":"café-24","tint":"hot","head":"#473327","eye":"#fcf3ee","headOut":"#ae1c1d","eyeOut":"#fcf3ee"}
+{"fn":"tinted","seed":"café-24","tint":"rose","head":"#473327","eye":"#fcf3ee","headOut":"#b63f71","eyeOut":"#fcf3ee"}
+{"fn":"tinted","seed":"café-24","tint":"blush","head":"#473327","eye":"#fcf3ee","headOut":"#a0545f","eyeOut":"#fcf3ee"}
+{"fn":"tinted","seed":"café-24","tint":"bile","head":"#473327","eye":"#fcf3ee","headOut":"#3a7e33","eyeOut":"#fffbf8"}
+{"fn":"tinted","seed":"Ünïcødé 25","tint":"hot","head":"#d089d9","eye":"#140c14","headOut":"#e5554c","eyeOut":"#140c14"}
+{"fn":"tinted","seed":"Ünïcødé 25","tint":"rose","head":"#d089d9","eye":"#140c14","headOut":"#f376a5","eyeOut":"#140c14"}
+{"fn":"tinted","seed":"Ünïcødé 25","tint":"blush","head":"#d089d9","eye":"#140c14","headOut":"#ff8f9e","eyeOut":"#140c14"}
+{"fn":"tinted","seed":"Ünïcødé 25","tint":"bile","head":"#d089d9","eye":"#140c14","headOut":"#66af5f","eyeOut":"#140c14"}
+{"fn":"tinted","seed":"🦊26🌱","tint":"hot","head":"#ae96f3","eye":"#100e17","headOut":"#e5564c","eyeOut":"#100e17"}
+{"fn":"tinted","seed":"🦊26🌱","tint":"rose","head":"#ae96f3","eye":"#100e17","headOut":"#f377a6","eyeOut":"#100e17"}
+{"fn":"tinted","seed":"🦊26🌱","tint":"blush","head":"#ae96f3","eye":"#100e17","headOut":"#fe909f","eyeOut":"#100e17"}
+{"fn":"tinted","seed":"🦊26🌱","tint":"bile","head":"#ae96f3","eye":"#100e17","headOut":"#67af60","eyeOut":"#100e17"}
+{"fn":"tinted","seed":"27","tint":"hot","head":"#cd5490","eye":"#160c10","headOut":"#d5473f","eyeOut":"#0d0508"}
+{"fn":"tinted","seed":"27","tint":"rose","head":"#cd5490","eye":"#160c10","headOut":"#e46496","eyeOut":"#160c10"}
+{"fn":"tinted","seed":"27","tint":"blush","head":"#cd5490","eye":"#160c10","headOut":"#f56f85","eyeOut":"#160c10"}
+{"fn":"tinted","seed":"27","tint":"bile","head":"#cd5490","eye":"#160c10","headOut":"#48a53f","eyeOut":"#160c10"}
+{"fn":"tinted","seed":"00000000-0000-4000-8000-000000000028","tint":"hot","head":"#8d8c00","eye":"#101006","headOut":"#d5473f","eyeOut":"#080802"}
+{"fn":"tinted","seed":"00000000-0000-4000-8000-000000000028","tint":"rose","head":"#8d8c00","eye":"#101006","headOut":"#e26796","eyeOut":"#101006"}
+{"fn":"tinted","seed":"00000000-0000-4000-8000-000000000028","tint":"blush","head":"#8d8c00","eye":"#101006","headOut":"#e87b8a","eyeOut":"#101006"}
+{"fn":"tinted","seed":"00000000-0000-4000-8000-000000000028","tint":"bile","head":"#8d8c00","eye":"#101006","headOut":"#59a252","eyeOut":"#101006"}
+{"fn":"tinted","seed":"  Mixed Case 29  ","tint":"hot","head":"#c86900","eye":"#160d07","headOut":"#d5473f","eyeOut":"#0d0502"}
+{"fn":"tinted","seed":"  Mixed Case 29  ","tint":"rose","head":"#c86900","eye":"#160d07","headOut":"#e16796","eyeOut":"#160d07"}
+{"fn":"tinted","seed":"  Mixed Case 29  ","tint":"blush","head":"#c86900","eye":"#160d07","headOut":"#ef7487","eyeOut":"#160d07"}
+{"fn":"tinted","seed":"  Mixed Case 29  ","tint":"bile","head":"#c86900","eye":"#160d07","headOut":"#50a349","eyeOut":"#160d07"}
+{"fn":"tinted","seed":"user-30","tint":"hot","head":"#c1cfff","eye":"#0c0f18","headOut":"#f7665c","eyeOut":"#0c0f18"}
+{"fn":"tinted","seed":"user-30","tint":"rose","head":"#c1cfff","eye":"#0c0f18","headOut":"#ff90b8","eyeOut":"#0c0f18"}
+{"fn":"tinted","seed":"user-30","tint":"blush","head":"#c1cfff","eye":"#0c0f18","headOut":"#ffb9c0","eyeOut":"#0c0f18"}
+{"fn":"tinted","seed":"user-30","tint":"bile","head":"#c1cfff","eye":"#0c0f18","headOut":"#79bf71","eyeOut":"#0c0f18"}
+{"fn":"tinted","seed":"alain31@example.com","tint":"hot","head":"#ea8d54","eye":"#170d08","headOut":"#e5554c","eyeOut":"#170d08"}
+{"fn":"tinted","seed":"alain31@example.com","tint":"rose","head":"#ea8d54","eye":"#170d08","headOut":"#f376a6","eyeOut":"#170d08"}
+{"fn":"tinted","seed":"alain31@example.com","tint":"blush","head":"#ea8d54","eye":"#170d08","headOut":"#ff909f","eyeOut":"#170d08"}
+{"fn":"tinted","seed":"alain31@example.com","tint":"bile","head":"#ea8d54","eye":"#170d08","headOut":"#67af5f","eyeOut":"#170d08"}
