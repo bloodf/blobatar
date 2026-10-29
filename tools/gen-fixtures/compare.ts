@@ -41,6 +41,7 @@ function compareBytes(name: string): void {
 compareBytes("gen2.txt");
 compareBytes("normalize.jsonl");
 compareBytes("looks.json");
+// traits.jsonl mixes floats (1e-9) and hex strings (exact) — structural below.
 
 function parseJSONL(buf: Buffer, label: string): unknown[] {
   const text = buf.toString("utf8");
@@ -123,4 +124,5 @@ function compareJSONL(name: string): void {
 compareJSONL("geometry.jsonl");
 compareJSONL("frames.jsonl");
 compareJSONL("appearance_resolve.jsonl");
+compareJSONL("traits.jsonl");
 console.log("fixtures compare: OK");

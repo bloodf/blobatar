@@ -33,6 +33,14 @@ const {
 } = await import(join(pkg, "index.ts"));
 const { SEEDS } = await import(join(pkg, "test/golden/corpus.ts"));
 const { normalizeSeed } = await import(join(pkg, "vendor/core/hash.ts"));
+const { traits } = await import(join(pkg, "vendor/core/traits.ts"));
+const { palette } = await import(join(pkg, "vendor/core/color.ts"));
+
+/** Upper edges of the tone swatches in vendor/core/color.ts; each band excludes its edge. */
+const TONE_EDGES = [0.2, 0.36, 0.62, 0.8, 0.93, 1] as const;
+const toneName = (v: number): string =>
+  BOT_TONES[TONE_EDGES.findIndex((edge) => v < edge)] ?? "pastel";
+
 
 type BotLook = { version: 1; base: Record<string, unknown>; states?: Record<string, Record<string, unknown>> };
 const look = (base: Record<string, unknown>): BotLook => ({ version: 1, base });
@@ -88,9 +96,18 @@ type NormalizeLine = {
   normalized: string;
 };
 
+type TraitsLine = {
+  seed: string;
+  hue: number;
+  tone: number;
+  toneName: string;
+  palette: { bg: string; head: string; eye: string };
+};
+
 const geoLines: GeoLine[] = [];
 const frameLines: FrameLine[] = [];
 const lerpLines: LerpLine[] = [];
+const traitsLines: TraitsLine[] = [];
 
 function pushGeometry(seed: string, l: BotLook | null, state: string) {
   const geometry = botAvatarGeometry(seed, l, state as never);
@@ -109,6 +126,17 @@ function pushFrames(seed: string, l: BotLook | null, state: string) {
 // Corpus seeds (look null, idle).
 for (const seed of SEEDS) {
   pushGeometry(seed, null, "idle");
+  const t = traits(seed);
+  const hue = t.num("hue", 0, 360);
+  const tone = t("tone");
+  const p = palette(hue, true, tone);
+  traitsLines.push({
+    seed,
+    hue,
+    tone,
+    toneName: toneName(tone),
+    palette: { bg: p.bg!, head: p.head!, eye: p.eye! },
+  });
 }
 
 // Edge-case seeds (geometry + frames).
@@ -215,6 +243,7 @@ function writeJSONL(path: string, rows: object[]) {
 writeJSONL(join(outDir, "geometry.jsonl"), geoLines);
 writeJSONL(join(outDir, "frames.jsonl"), [...frameLines, ...lerpLines]);
 writeJSONL(join(outDir, "normalize.jsonl"), normalizeCases);
+writeJSONL(join(outDir, "traits.jsonl"), traitsLines);
 
 // looks.json — BotLook enum lists. TS is source of truth until Beans swaps to Go.
 // Stable key order; LF; trailing newline. Written to package root and golden/.
@@ -384,6 +413,7 @@ console.log(
       lerps: lerpLines.length,
       normalize: normalizeCases.length,
       resolve: resolveLines.length,
+      traits: traitsLines.length,
       hashes: {
         "gen2.txt": finger("gen2.txt"),
         "geometry.jsonl": finger("geometry.jsonl"),
@@ -391,6 +421,7 @@ console.log(
         "normalize.jsonl": finger("normalize.jsonl"),
         "looks.json": finger("looks.json"),
         "appearance_resolve.jsonl": finger("appearance_resolve.jsonl"),
+        "traits.jsonl": finger("traits.jsonl"),
       },
     },
     null,

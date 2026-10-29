@@ -20,6 +20,7 @@ until the Beans swap).
 |---|---|
 | SVG markup and SHA-256 tripwire hashes (`gen2.txt`) | byte-exact |
 | Seed hashes (`Normalize` + murmur-style stream) | exact `uint32` / float64 |
+| Traits / tone / hue / palette hex (`traits.jsonl`) | floats ε `1e-9`; hex exact |
 | Geometry (`geometry.jsonl`) | absolute ε `1e-9` |
 | Frames and lerps (`frames.jsonl`) | absolute ε `1e-9` |
 
@@ -33,6 +34,20 @@ resolved version), and the exact generator command.
 `gen2.txt` (and its hashes) are byte-exact. `geometry.jsonl` / `frames.jsonl`
 are compared structurally with absolute ε `1e-9`. `normalize.jsonl` is the JS
 oracle for `Normalize`.
+
+`FromHex` accepts only `#RRGGBB` / `#rrggbb` (leading `#` required; exactly 6
+hex digits after `#`; bare `rrggbb` is rejected — stricter than the TS
+oracle's silent `parseInt`). It returns an error for empty input, `"#"`,
+`"#12"`, `"#11223344"`, `"#zz"`, or non-hex characters, and never panics.
+`MixHex`, `FadeHex`, and `Tinted` validate before slicing and propagate
+errors. `inGamut` returns false for NaN/±Inf. `ToHex` returns an error for
+non-finite OKLCh components (never a silent `#000000`, never
+`int(math.Round(NaN))`).
+
+Authored tables (`hot`/`rose`/`blush`/`bile` tints, contrast floors, tone band
+edges/names) are unexported; use `HotTint`, `RoseTint`, `BlushTint`, `BileTint`,
+`TintTargets`, `ContrastFloors`, `ToneBandEdges`, and `ToneBandNames` (each
+returns a copy).
 
 ```bash
 bun tools/gen-fixtures/gen.ts /path/to/beans
