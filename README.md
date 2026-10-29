@@ -34,6 +34,11 @@ resolved version), and the exact generator command.
 are compared structurally with absolute ε `1e-9`. `normalize.jsonl` is the JS
 oracle for `Normalize`.
 
+`FromHex` accepts only `#RRGGBB` / `#rrggbb` and returns an error for empty
+input, a lone `#`, wrong lengths, or non-hex characters (it never panics).
+`MixHex` and `Tinted` propagate that error. Gamut checks treat NaN and ±Inf as
+out of gamut.
+
 ```bash
 bun tools/gen-fixtures/gen.ts /path/to/beans
 bun tools/gen-fixtures/compare.ts testdata/golden /path/to/regenerated

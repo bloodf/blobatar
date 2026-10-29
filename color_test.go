@@ -42,7 +42,10 @@ func TestContrastEnsureContrast(t *testing.T) {
 }
 
 func TestToHexFromHexRoundTripKnown(t *testing.T) {
-	c := blobatar.FromHex("#aabbcc")
+	c, err := blobatar.FromHex("#aabbcc")
+	if err != nil {
+		t.Fatal(err)
+	}
 	// Values observed from Beans vendor/core/color.ts under bun 1.4.4.
 	if !almostEqual(c.L, 0.784436469100708, 1e-9) ||
 		!almostEqual(c.C, 0.030668810150649508, 1e-9) ||
@@ -58,6 +61,69 @@ func TestToHexFromHexRoundTripKnown(t *testing.T) {
 	ratio := blobatar.Contrast(r["eye"], r["head"])
 	if !almostEqual(ratio, 8.330782754251093, 1e-9) {
 		t.Fatalf("eye/head contrast=%v", ratio)
+	}
+}
+
+func TestFromHexMalformed(t *testing.T) {
+	cases := []string{
+		"",
+		"#",
+		"aabbcc",
+		"#abc",
+		"#abcd",
+		"#abcdef0",
+		"#gghhii",
+		"#aabbgg",
+		"#AABB C",
+		"##abbcc",
+		"#aabbcc ",
+		" #aabbcc",
+	}
+	for _, hex := range cases {
+		c, err := blobatar.FromHex(hex)
+		if err == nil {
+			t.Errorf("FromHex(%q) = %+v, want error", hex, c)
+		}
+	}
+}
+
+func TestInGamutNaNInf(t *testing.T) {
+	if !blobatar.InGamutForTest(0, 0.5, 1) {
+		t.Fatal("in-range RGB must be in gamut")
+	}
+	if blobatar.InGamutForTest(math.NaN(), 0, 0) {
+		t.Fatal("NaN must be out of gamut")
+	}
+	if blobatar.InGamutForTest(0, math.NaN(), 0) {
+		t.Fatal("NaN (g) must be out of gamut")
+	}
+	if blobatar.InGamutForTest(0, 0, math.NaN()) {
+		t.Fatal("NaN (b) must be out of gamut")
+	}
+	if blobatar.InGamutForTest(math.Inf(1), 0, 0) {
+		t.Fatal("+Inf must be out of gamut")
+	}
+	if blobatar.InGamutForTest(math.Inf(-1), 0.5, 0.5) {
+		t.Fatal("-Inf must be out of gamut")
+	}
+	if blobatar.InGamutForTest(-0.1, 0, 0) {
+		t.Fatal("below lo must be out of gamut")
+	}
+	if blobatar.InGamutForTest(1.1, 0, 0) {
+		t.Fatal("above hi must be out of gamut")
+	}
+}
+
+func TestCloseEnoughRejectsNaN(t *testing.T) {
+	// Mirrors the parity helper: NaN must not compare equal.
+	if closeEnough(math.NaN(), 0, floatEps) {
+		t.Fatal("NaN vs 0 must fail")
+	}
+	if closeEnough(0, math.NaN(), floatEps) {
+		t.Fatal("0 vs NaN must fail")
+	}
+	if closeEnough(math.NaN(), math.NaN(), floatEps) {
+		t.Fatal("NaN vs NaN must fail")
 	}
 }
 
@@ -115,7 +181,11 @@ func TestEyePolarityAcrossTones(t *testing.T) {
 
 func TestMixHexFadeHex(t *testing.T) {
 	a, b := "#112233", "#aabbcc"
-	if got := blobatar.MixHex(a, b, 0); got != a {
+	got, err := blobatar.MixHex(a, b, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != a {
 		t.Fatalf("MixHex t=0: %q", got)
 	}
 	if got := blobatar.FadeHex(a, a, 0.5); got != a {
@@ -129,11 +199,22 @@ func TestMixHexFadeHex(t *testing.T) {
 
 func TestTintedHeatZero(t *testing.T) {
 	p := blobatar.PaletteColors(200, true, 0.5)
-	hotHead, hotEye := blobatar.Tinted(p.Head, p.Eye, blobatar.HOT)
-	if blobatar.MixHex(p.Head, hotHead, 0) != p.Head {
+	hotHead, hotEye, err := blobatar.Tinted(p.Head, p.Eye, blobatar.HOT)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotHead, err := blobatar.MixHex(p.Head, hotHead, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotHead != p.Head {
 		t.Fatalf("heat 0 head drifted")
 	}
-	if blobatar.MixHex(p.Eye, hotEye, 0) != p.Eye {
+	gotEye, err := blobatar.MixHex(p.Eye, hotEye, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotEye != p.Eye {
 		t.Fatalf("heat 0 eye drifted")
 	}
 }

@@ -6,6 +6,7 @@
 package blobatar
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 )
@@ -54,9 +55,11 @@ func toLinear(color Oklch) [3]float64 {
 	}
 }
 
+// inGamut reports whether linear-light sRGB components are in gamut.
+// NaN and ±Inf are out of gamut (matching TS: !(v >= lo && v <= hi)).
 func inGamut(rgb [3]float64) bool {
 	for _, v := range rgb {
-		if v < -1e-4 || v > 1+1e-4 {
+		if !(v >= -1e-4 && v <= 1+1e-4) {
 			return false
 		}
 	}
@@ -158,15 +161,31 @@ func ToHex(color Oklch) string {
 	return string(out)
 }
 
+func isHexDigit(c byte) bool {
+	return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F'
+}
+
 // FromHex decodes an #rrggbb (or #RRGGBB) string into OKLCh.
-func FromHex(hex string) Oklch {
-	n, _ := strconv.ParseInt(hex[1:], 16, 64)
+// It returns an error for empty input, a lone "#", wrong lengths, or non-hex
+// characters — it never panics on malformed input.
+func FromHex(hex string) (Oklch, error) {
+	if len(hex) != 7 || hex[0] != '#' {
+		return Oklch{}, fmt.Errorf("blobatar: FromHex: want #RRGGBB, got %q", hex)
+	}
+	for i := 1; i < 7; i++ {
+		if !isHexDigit(hex[i]) {
+			return Oklch{}, fmt.Errorf("blobatar: FromHex: want #RRGGBB, got %q", hex)
+		}
+	}
+	n, err := strconv.ParseInt(hex[1:], 16, 64)
+	if err != nil {
+		return Oklch{}, fmt.Errorf("blobatar: FromHex: %w", err)
+	}
 	channels := [3]float64{
 		float64((n >> 16) & 255),
 		float64((n >> 8) & 255),
 		float64(n & 255),
 	}
-	var r, g, b float64
 	lin := func(v float64) float64 {
 		s := v / 255
 		if s <= 0.04045 {
@@ -174,7 +193,7 @@ func FromHex(hex string) Oklch {
 		}
 		return math.Pow((s+0.055)/1.055, 2.4)
 	}
-	r, g, b = lin(channels[0]), lin(channels[1]), lin(channels[2])
+	r, g, b := lin(channels[0]), lin(channels[1]), lin(channels[2])
 
 	l := math.Cbrt(0.4122214708*r + 0.5363325363*g + 0.0514459929*b)
 	m := math.Cbrt(0.2119034982*r + 0.6806995451*g + 0.1073969566*b)
@@ -187,7 +206,7 @@ func FromHex(hex string) Oklch {
 		L: 0.2104542553*l + 0.793617785*m - 0.0040720468*s,
 		C: math.Hypot(A, B),
 		H: (math.Atan2(B, A) * 180) / math.Pi,
-	}
+	}, nil
 }
 
 // Mix blends a and b in OKLab at t in [0, 1].
@@ -207,8 +226,17 @@ func Mix(a, b Oklch, t float64) Oklch {
 }
 
 // MixHex blends two serialized colors in OKLab and returns lowercase #rrggbb.
-func MixHex(a, b string, t float64) string {
-	return ToHex(Mix(FromHex(a), FromHex(b), t))
+// Both a and b must be valid #RRGGBB (see FromHex).
+func MixHex(a, b string, t float64) (string, error) {
+	ca, err := FromHex(a)
+	if err != nil {
+		return "", err
+	}
+	cb, err := FromHex(b)
+	if err != nil {
+		return "", err
+	}
+	return ToHex(Mix(ca, cb, t)), nil
 }
 
 // FadeHex blends two hex colors in sRGB (matching CSS transition: fill).
@@ -262,9 +290,16 @@ var (
 )
 
 // Tinted returns the palette a tinting pose heads toward.
-func Tinted(head, eye string, t Tint) (hotHead, hotEye string) {
-	base := FromHex(head)
-	baseEye := FromHex(eye)
+// head and eye must be valid #RRGGBB (see FromHex).
+func Tinted(head, eye string, t Tint) (hotHead, hotEye string, err error) {
+	base, err := FromHex(head)
+	if err != nil {
+		return "", "", err
+	}
+	baseEye, err := FromHex(eye)
+	if err != nil {
+		return "", "", err
+	}
 
 	hh := Oklch{
 		L: base.L + (t.L-base.L)*t.Pull,
@@ -285,21 +320,37 @@ func Tinted(head, eye string, t Tint) (hotHead, hotEye string) {
 		worst := math.Inf(1)
 		for i := 0; i <= 10; i++ {
 			tt := float64(i) / 10
-			c := Contrast(FromHex(MixHex(eye, eyeHex, tt)), FromHex(MixHex(head, headHex, tt)))
+			mixedEye, err := MixHex(eye, eyeHex, tt)
+			if err != nil {
+				return "", "", err
+			}
+			mixedHead, err := MixHex(head, headHex, tt)
+			if err != nil {
+				return "", "", err
+			}
+			ce, err := FromHex(mixedEye)
+			if err != nil {
+				return "", "", err
+			}
+			ch, err := FromHex(mixedHead)
+			if err != nil {
+				return "", "", err
+			}
+			c := Contrast(ce, ch)
 			if c < worst {
 				worst = c
 			}
 		}
 		if worst >= tintFloor {
-			return headHex, eyeHex
+			return headHex, eyeHex, nil
 		}
 		l := math.Min(1, math.Max(0, he.L+dir*0.02))
 		if l == he.L {
-			return headHex, eyeHex
+			return headHex, eyeHex, nil
 		}
 		he.L = l
 	}
-	return headHex, ToHex(he)
+	return headHex, ToHex(he), nil
 }
 
 // toneSwatch is one entry of the authored tone set.
