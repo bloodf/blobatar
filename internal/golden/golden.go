@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -159,6 +160,76 @@ func LoadTraits() ([]TraitsCase, error) {
 		var c TraitsCase
 		if err := json.Unmarshal([]byte(line), &c); err != nil {
 			return nil, fmt.Errorf("golden: traits.jsonl: %w", err)
+		}
+		out = append(out, c)
+	}
+	return out, sc.Err()
+}
+
+// ColorOracleCase is one row of color_oracle.jsonl (MixHex / FadeHex / Tinted).
+// Success rows set Hex or HeadOut/EyeOut; error rows set Error to "bad_t" or "bad_hex".
+// Non-finite FadeHex t values are encoded as the strings "NaN", "+Inf", "-Inf"
+// because JSON cannot represent them.
+type ColorOracleCase struct {
+	Fn      string          `json:"fn"`
+	A       string          `json:"a,omitempty"`
+	B       string          `json:"b,omitempty"`
+	T       json.RawMessage `json:"t,omitempty"`
+	Hex     string          `json:"hex,omitempty"`
+	Seed    string          `json:"seed,omitempty"`
+	Tint    string          `json:"tint,omitempty"`
+	Head    string          `json:"head,omitempty"`
+	Eye     string          `json:"eye,omitempty"`
+	HeadOut string          `json:"headOut,omitempty"`
+	EyeOut  string          `json:"eyeOut,omitempty"`
+	Error   string          `json:"error,omitempty"`
+}
+
+// ParseT decodes the t field: a JSON number, or "NaN" / "+Inf" / "-Inf".
+func (c ColorOracleCase) ParseT() (float64, error) {
+	if len(c.T) == 0 {
+		return 0, fmt.Errorf("golden: color oracle missing t")
+	}
+	if c.T[0] == '"' {
+		var s string
+		if err := json.Unmarshal(c.T, &s); err != nil {
+			return 0, err
+		}
+		switch s {
+		case "NaN":
+			return math.NaN(), nil
+		case "+Inf":
+			return math.Inf(1), nil
+		case "-Inf":
+			return math.Inf(-1), nil
+		default:
+			return 0, fmt.Errorf("golden: unknown t string %q", s)
+		}
+	}
+	var f float64
+	if err := json.Unmarshal(c.T, &f); err != nil {
+		return 0, err
+	}
+	return f, nil
+}
+
+// LoadColorOracle parses testdata/golden/color_oracle.jsonl.
+func LoadColorOracle() ([]ColorOracleCase, error) {
+	raw, err := os.ReadFile(filepath.Join(Root(), "color_oracle.jsonl"))
+	if err != nil {
+		return nil, err
+	}
+	var out []ColorOracleCase
+	sc := bufio.NewScanner(bytes.NewReader(raw))
+	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for sc.Scan() {
+		line := sc.Text()
+		if line == "" {
+			continue
+		}
+		var c ColorOracleCase
+		if err := json.Unmarshal([]byte(line), &c); err != nil {
+			return nil, fmt.Errorf("golden: color_oracle.jsonl: %w", err)
 		}
 		out = append(out, c)
 	}

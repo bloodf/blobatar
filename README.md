@@ -20,6 +20,7 @@ a later PR.
 | SVG markup and SHA-256 tripwire hashes (`gen2.txt`) | byte-exact |
 | Seed hashes (`Normalize` + murmur-style stream) | exact `uint32` / float64 |
 | Traits / tone / hue / palette hex (`traits.jsonl`) | floats ε `1e-9`; hex exact |
+| MixHex / FadeHex / Tinted (`color_oracle.jsonl`) | hex exact; error rows must error |
 | Geometry (`geometry.jsonl`) | absolute ε `1e-9` |
 | Frames and lerps (`frames.jsonl`) | absolute ε `1e-9` |
 
@@ -39,9 +40,14 @@ hex digits after `#`; bare `rrggbb` is rejected — stricter than the TS
 oracle's silent `parseInt`). It returns an error for empty input, `"#"`,
 `"#12"`, `"#11223344"`, `"#zz"`, or non-hex characters, and never panics.
 `MixHex`, `FadeHex`, and `Tinted` validate before slicing and propagate
-errors. `inGamut` returns false for NaN/±Inf. `ToHex` returns an error for
-non-finite OKLCh components (never a silent `#000000`, never
-`int(math.Round(NaN))`).
+errors. `FadeHex` also rejects non-finite `t` and `t` outside `[0, 1]`
+(never malformed hex). `inGamut` returns false for NaN/±Inf. `ToHex`
+returns an error for non-finite OKLCh components (never a silent
+`#000000`, never `int(math.Round(NaN))`).
+
+`TraitOverrides` is `map[string]TraitOverride` (`FixedTrait` / `ListTrait`);
+JSON accepts only a number or number array. `Int` with `max < min` matches
+Beans arithmetic (not an error).
 
 Authored tables (`hot`/`rose`/`blush`/`bile` tints, contrast floors, tone band
 edges/names) are unexported; use `HotTint`, `RoseTint`, `BlushTint`, `BileTint`,

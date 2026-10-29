@@ -286,7 +286,14 @@ func MixHex(a, b string, t float64) (string, error) {
 
 // FadeHex blends two hex colors in sRGB (matching CSS transition: fill).
 // Both a and b must be valid #RRGGBB (see FromHex); errors are propagated.
+//
+// t must be finite and in [0, 1]. NaN, ±Inf, or values outside that range
+// return an error — never a malformed hex string (which the TS oracle can
+// emit for the same inputs via unclamped Math.round).
 func FadeHex(a, b string, t float64) (string, error) {
+	if !isFinite(t) || t < 0 || t > 1 {
+		return "", fmt.Errorf("blobatar: FadeHex: t must be finite in [0,1], got %v", t)
+	}
 	if err := validateHexRGB(a); err != nil {
 		return "", err
 	}

@@ -5,12 +5,101 @@
 
 package blobatar
 
-import "math"
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"math"
+)
+
+// TraitOverride is a fixed unit float or a candidate list, matching Beans
+// `TraitOverrides = Record<string, number | number[]>`.
+//
+// Construct with FixedTrait or ListTrait. JSON encodes as a number or a
+// number array; values of any other JSON type are rejected.
+type TraitOverride struct {
+	kind overrideKind
+	num  float64
+	list []float64
+}
+
+type overrideKind byte
+
+const (
+	overrideFixed overrideKind = iota
+	overrideList
+)
+
+// FixedTrait returns a single-value override (Beans number form).
+func FixedTrait(v float64) TraitOverride {
+	return TraitOverride{kind: overrideFixed, num: v}
+}
+
+// ListTrait returns a candidate-list override (Beans number[] form).
+// An empty list is the same as omitting the key (falls through to the hash).
+func ListTrait(vs ...float64) TraitOverride {
+	list := make([]float64, len(vs))
+	copy(list, vs)
+	return TraitOverride{kind: overrideList, list: list}
+}
+
+// UnmarshalJSON accepts a JSON number or array of numbers only.
+func (o *TraitOverride) UnmarshalJSON(data []byte) error {
+	data = bytes.TrimSpace(data)
+	if len(data) == 0 {
+		return fmt.Errorf("blobatar: TraitOverride: empty JSON")
+	}
+	if string(data) == "null" {
+		return fmt.Errorf("blobatar: TraitOverride: want number or number[], got null")
+	}
+	if data[0] == '[' {
+		var list []json.RawMessage
+		if err := json.Unmarshal(data, &list); err != nil {
+			return fmt.Errorf("blobatar: TraitOverride: %w", err)
+		}
+		nums := make([]float64, len(list))
+		for i, raw := range list {
+			raw = bytes.TrimSpace(raw)
+			// Reject JSON null elements (encoding/json would decode null as 0).
+			if string(raw) == "null" {
+				return fmt.Errorf("blobatar: TraitOverride: array element %d: want number, got null", i)
+			}
+			var n float64
+			if err := json.Unmarshal(raw, &n); err != nil {
+				return fmt.Errorf("blobatar: TraitOverride: array element %d: want number, got %s", i, raw)
+			}
+			nums[i] = n
+		}
+		*o = ListTrait(nums...)
+		return nil
+	}
+	var num float64
+	if err := json.Unmarshal(data, &num); err != nil {
+		return fmt.Errorf("blobatar: TraitOverride: want number or number[], got %s", data)
+	}
+	*o = FixedTrait(num)
+	return nil
+}
+
+// MarshalJSON emits a JSON number or number array to match Beans.
+func (o TraitOverride) MarshalJSON() ([]byte, error) {
+	switch o.kind {
+	case overrideFixed:
+		return json.Marshal(o.num)
+	case overrideList:
+		if o.list == nil {
+			return []byte("[]"), nil
+		}
+		return json.Marshal(o.list)
+	default:
+		return nil, fmt.Errorf("blobatar: TraitOverride: invalid kind %d", o.kind)
+	}
+}
 
 // TraitOverrides maps trait keys to a fixed unit float in [0, 1) or a list of
 // candidate unit floats. A list means "any of these"; the key's own hash picks
 // the index. An empty list is the same as omitting the key.
-type TraitOverrides map[string]any
+type TraitOverrides map[string]TraitOverride
 
 // TraitReader addresses every value by a string key rather than drawing from a
 // sequential stream, so trait keys are an append-only namespace.
@@ -33,19 +122,22 @@ func NewTraits(seed string, normalize bool, overrides TraitOverrides) *TraitRead
 // Float returns a uniform float in [0, 1) for key.
 func (t *TraitReader) Float(key string) float64 {
 	if t.overrides != nil {
-		if raw, ok := t.overrides[key]; ok {
-			switch v := raw.(type) {
-			case float64:
-				return clampUnit(v)
-			case []float64:
-				if len(v) == 0 {
+		if o, ok := t.overrides[key]; ok {
+			switch o.kind {
+			case overrideFixed:
+				return clampUnit(o.num)
+			case overrideList:
+				if len(o.list) == 0 {
 					break
 				}
-				i := int(math.Floor(stream(t.state, key) * float64(len(v))))
-				if i >= len(v) {
-					i = len(v) - 1
+				i := int(math.Floor(stream(t.state, key) * float64(len(o.list))))
+				if i >= len(o.list) {
+					i = len(o.list) - 1
 				}
-				return clampUnit(v[i])
+				return clampUnit(o.list[i])
+			default:
+				// Exhaustiveness: newly added overrideKind values must be handled.
+				panic(fmt.Sprintf("blobatar: unhandled TraitOverride kind %d", o.kind))
 			}
 		}
 	}
@@ -69,7 +161,14 @@ func (t *TraitReader) Num(key string, min, max float64) float64 {
 	return min + t.Float(key)*(max-min)
 }
 
-// Int returns a uniform integer in [min, max].
+// Int returns a uniform integer in [min, max] when max >= min.
+//
+// When max < min, behavior matches Beans vendor/core/traits.ts exactly:
+//
+//	min + floor(Float(key) * (max - min + 1))
+//
+// That expression is not an error; the result can fall outside both [min, max]
+// and [max, min]. Callers that need a closed range must ensure max >= min.
 func (t *TraitReader) Int(key string, min, max int) int {
 	return min + int(math.Floor(t.Float(key)*float64(max-min+1)))
 }

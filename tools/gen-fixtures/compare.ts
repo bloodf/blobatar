@@ -123,4 +123,5 @@ function compareJSONL(name: string): void {
 compareJSONL("geometry.jsonl");
 compareJSONL("frames.jsonl");
 compareJSONL("traits.jsonl");
+compareJSONL("color_oracle.jsonl");
 console.log("fixtures compare: OK");
