@@ -14,7 +14,9 @@ import (
 // shapeNumber matches JavaScript Math.round's ties toward positive infinity
 // and removes negative zero, as the source SVG path generator does.
 func shapeNumber(v float64) string {
-	whole, fraction := math.Modf(v * 100)
+	// Keep the multiplication rounded to binary64 before an inlined Modf
+	// subtracts the integer part; otherwise arm64 may fuse them into FMA.
+	whole, fraction := math.Modf(float64(v * 100))
 	if fraction >= 0.5 {
 		whole++
 	} else if fraction < -0.5 {

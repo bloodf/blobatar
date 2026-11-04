@@ -207,7 +207,9 @@ func collapsedContour(count int, centre point) AvatarCubicPath {
 // Math.round ties toward positive infinity, unlike Go's math.Round. Values
 // here are finite and bounded by the authored layout/motion trait ranges.
 func roundGeometry(v float64) float64 {
-	whole, fraction := math.Modf(v)
+	// The explicit conversion also protects callers when this helper is
+	// inlined after a scaling multiplication (petals and motion seeds).
+	whole, fraction := math.Modf(float64(v))
 	if fraction >= 0.5 {
 		return whole + 1
 	}
