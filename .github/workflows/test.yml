@@ -47,6 +47,11 @@ jobs:
         shell: bash
         run: go test -race ./...
 
+      - name: Verify x86-64-v3 numeric parity
+        if: runner.os == 'Linux' && runner.arch == 'X64'
+        shell: bash
+        run: GOAMD64=v3 go test ./...
+
       - name: Test step summary
         if: always()
         shell: bash
@@ -117,6 +122,9 @@ jobs:
         with:
           bun-version: ${{ steps.source.outputs.bun }}
 
+      - name: Test layout and expression fixture comparisons
+        run: bun test tools/gen-fixtures/compare-layout.test.ts tools/gen-fixtures/compare-expression.test.ts
+
       - name: Regenerate and compare
         shell: bash
         run: |
@@ -131,3 +139,9 @@ jobs:
           # Package-root looks.json must match the golden copy (and the regen).
           cmp /tmp/regen/looks.json.committed looks.json
           cmp looks.json testdata/golden/looks.json
+          bun tools/gen-fixtures/gen-contour.ts "$PWD/beans" /tmp/regen/contour
+          diff -ru testdata/contour /tmp/regen/contour
+          bun tools/gen-fixtures/gen-layout.ts "$PWD/beans" /tmp/regen/layout
+          bun tools/gen-fixtures/compare-layout.ts testdata/layout /tmp/regen/layout
+          bun tools/gen-fixtures/gen-expression.ts "$PWD/beans" /tmp/regen/expressions
+          bun tools/gen-fixtures/compare-expression.ts testdata/expressions /tmp/regen/expressions

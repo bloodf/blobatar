@@ -483,19 +483,29 @@ func mergePalette(base, over *BotPalette) *BotPalette {
 // re-validated. state "" means no state override; unknown states error.
 // PaletteColors / SeedPalette errors (e.g. non-finite hue) are propagated.
 func ResolveAppearance(botID string, look any, state string) (ResolvedAppearance, error) {
+	app, err := resolveLook(look, state)
+	if err != nil {
+		return ResolvedAppearance{}, err
+	}
+	return resolveFromAppearance(botID, app)
+}
+
+// Shared by appearance resolution and numeric geometry so their validation
+// and state/palette merge order cannot diverge.
+func resolveLook(look any, state string) (Appearance, error) {
 	if state != "" && !oneOf(state, avatarStates) {
-		return ResolvedAppearance{}, fmt.Errorf("unknown avatar state %q", state)
+		return Appearance{}, fmt.Errorf("unknown avatar state %q", state)
 	}
 	var app Appearance
 	// Untyped nil and typed nil *Look both mean "no look" (seeded defaults).
 	if look != nil && !isNilLookPointer(look) {
 		checked, err := ValidateLook(look)
 		if err != nil {
-			return ResolvedAppearance{}, err
+			return Appearance{}, err
 		}
 		app = effective(checked, state)
 	}
-	return resolveFromAppearance(botID, app)
+	return app, nil
 }
 
 func isNilLookPointer(v any) bool {

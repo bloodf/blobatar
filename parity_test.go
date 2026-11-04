@@ -185,8 +185,7 @@ func TestColorOracleParity(t *testing.T) {
 }
 
 func TestShapeGeometryParity(t *testing.T) {
-	t.Skip("blobatar epic G3: shape geometry (bloodf/beans#379)")
-	// TODO(G3): compare Geometry() to geometry.jsonl within 1e-9.
+	compareAllGeometryFixtures(t)
 }
 
 func TestExpressionsLookParity(t *testing.T) {

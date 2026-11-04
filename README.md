@@ -14,6 +14,80 @@ idle/morph worklets are out of scope. `looks.json` lists BotLook enums
 (generated from Beans TS via `tools/gen-fixtures`; TS remains source of truth
 until the Beans swap).
 
+### Layout foundation
+
+The internal gen2 layout now covers all ten silhouettes, their safe face
+regions, decorations, fitted eyes, and byte-exact core and eye paths.
+`testdata/layout/layout.jsonl` is a separate TypeScript oracle generated from
+the same Beans SHA and Bun version in `testdata/golden/SOURCE`; it covers the
+1,000-seed corpus, every shape-band boundary, extreme trait overrides, and
+candidate-list overrides. Numeric layout fields under `expected` use absolute
+ε `1e-9`; path strings, metadata and overrides are exact. CI regenerates and
+compares the complete oracle, including fields and ordering, and rejects
+non-finite numbers. This allows platform-level floating-point differences
+without changing the committed fixtures or weakening path parity.
+
+The layout-to-contour tests also check core, extra, petals and eyes against all
+1,049 rows of the original `geometry.jsonl`, without modifying that fixture.
+The public `Geometry` function now compares every field against those 1,049
+rows, including background, expression pose/palette, motion and idle seeds.
+SVG rendering, Frame and Lerp remain separate work.
+
+```bash
+bun tools/gen-fixtures/gen-layout.ts /path/to/pinned-beans /tmp/layout-fixtures
+bun tools/gen-fixtures/compare-layout.ts testdata/layout /tmp/layout-fixtures
+bun test tools/gen-fixtures/compare-layout.test.ts
+```
+
+### Expression foundation
+
+The internal expression layer covers all 14 frozen poses, static eye baking,
+per-eye transforms (including seesaw phase), pose variables, pose interpolation
+and the four palette tints. Its separate TypeScript oracle, generated from the
+same pinned source, checks 1,152 layout/expression cases, 1,350 interpolations,
+and all 98 expression/state combinations. Eye paths and transform strings are
+byte-exact; fitted eye numbers use absolute ε `1e-9`. Pose values and palette
+hex are exact. CI tolerates numeric differences only in the top-level `eyes`
+outputs of `expressions.jsonl` and `custom.jsonl`. Other numbers, metadata,
+field order, files, strings and interpolation results remain exact; non-finite
+numbers are rejected everywhere. The unchanged geometry fixture also checks
+pose and palette.
+
+Geometry uses this layer and retains unposed eyes plus the separate pose.
+Static SVG integration remains pending: it must bake the eye channels and
+wrap only the figure in the body translation.
+Tinting uses the effective palette, including its overrides, and leaves the
+background unchanged. Frame loops and full geometry interpolation are not
+implemented by the pose helpers.
+
+```bash
+bun tools/gen-fixtures/gen-expression.ts /path/to/pinned-beans /tmp/expression-fixtures
+bun tools/gen-fixtures/compare-expression.ts testdata/expressions /tmp/expression-fixtures
+bun test tools/gen-fixtures/compare-expression.test.ts
+```
+
+## Numeric geometry
+
+`Geometry(botID, look, state)` returns an `AvatarGeometry` and an error. It
+accepts the same typed or map-based look values as `ResolveAppearance`; nil
+means seeded defaults and an empty state string means no state override.
+Unknown states and invalid looks return an error before producing geometry.
+
+```go
+g, err := blobatar.Geometry("bot-id", nil, "idle")
+if err != nil {
+    return err
+}
+// g.Core: 24 cubics; g.Extra: 4; g.Background.Path: 8.
+// g.Petals: 9 slots; g.Eyes: 2 unposed superellipses.
+// Apply g.Pose separately, once. g.Palette already includes expression tint.
+```
+
+Each endpoint owns its contour slices. A missing background retains its circle
+path at opacity zero; unused petals have radius zero at the body centre.
+`motion: false` preserves the endpoint's pose and seeded timing data. Geometry
+does not render SVG, interpolate endpoints or evaluate animation frames.
+
 ## Parity contract
 
 | Surface | Tolerance |
