@@ -11,9 +11,11 @@ import (
 	"strconv"
 )
 
-// pose and expression remain internal until Geometry and SVG assembly are
-// connected. A zero pose is not idle: identityPose supplies the unit scales.
-type pose struct {
+// Pose contains the expression channels carried by AvatarGeometry. Scales are
+// factors, tilts are degrees, offsets are view-box units, and Heat/Shake/Rock
+// are amplitudes. The *2 fields are right-eye differentials, not endpoints.
+// The zero value is not an idle pose: idle has ESX and ESY equal to one.
+type Pose struct {
 	ESX   float64 `json:"esx"`
 	ESY   float64 `json:"esy"`
 	Tilt  float64 `json:"tilt"`
@@ -29,6 +31,8 @@ type pose struct {
 	Rock  float64 `json:"rock"`
 	BDY   float64 `json:"bdy"`
 }
+
+type pose = Pose
 
 func identityPose() pose { return pose{ESX: 1, ESY: 1} }
 

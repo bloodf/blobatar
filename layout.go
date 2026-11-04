@@ -10,7 +10,7 @@ import (
 	"strconv"
 )
 
-// The layout remains internal until the complete Geometry/SVG API is ported.
+// Layout stays internal; Geometry exposes independent public endpoint values.
 // These values are unrounded; only path serialization rounds coordinates.
 // Keep explicit float64 conversions at multiply/add boundaries: they preserve
 // the source rounding on targets that can fuse operations.

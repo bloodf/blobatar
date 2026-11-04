@@ -29,8 +29,9 @@ without changing the committed fixtures or weakening path parity.
 
 The layout-to-contour tests also check core, extra, petals and eyes against all
 1,049 rows of the original `geometry.jsonl`, without modifying that fixture.
-This does **not** complete G3: the full Geometry API, background and expression
-assembly, SVG renderer, Frame and Lerp remain to be implemented.
+The public `Geometry` function now compares every field against those 1,049
+rows, including background, expression pose/palette, motion and idle seeds.
+SVG rendering, Frame and Lerp remain separate work.
 
 ```bash
 bun tools/gen-fixtures/gen-layout.ts /path/to/pinned-beans /tmp/layout-fixtures
@@ -52,9 +53,9 @@ field order, files, strings and interpolation results remain exact; non-finite
 numbers are rejected everywhere. The unchanged geometry fixture also checks
 pose and palette.
 
-G4b remains open until the production Geometry/SVG path uses this layer.
-Geometry must retain unposed eyes plus the separate pose, while static SVG
-bakes the eye channels and wraps only the figure in the body translation.
+Geometry uses this layer and retains unposed eyes plus the separate pose.
+Static SVG integration remains pending: it must bake the eye channels and
+wrap only the figure in the body translation.
 Tinting uses the effective palette, including its overrides, and leaves the
 background unchanged. Frame loops and full geometry interpolation are not
 implemented by the pose helpers.
@@ -64,6 +65,28 @@ bun tools/gen-fixtures/gen-expression.ts /path/to/pinned-beans /tmp/expression-f
 bun tools/gen-fixtures/compare-expression.ts testdata/expressions /tmp/expression-fixtures
 bun test tools/gen-fixtures/compare-expression.test.ts
 ```
+
+## Numeric geometry
+
+`Geometry(botID, look, state)` returns an `AvatarGeometry` and an error. It
+accepts the same typed or map-based look values as `ResolveAppearance`; nil
+means seeded defaults and an empty state string means no state override.
+Unknown states and invalid looks return an error before producing geometry.
+
+```go
+g, err := blobatar.Geometry("bot-id", nil, "idle")
+if err != nil {
+    return err
+}
+// g.Core: 24 cubics; g.Extra: 4; g.Background.Path: 8.
+// g.Petals: 9 slots; g.Eyes: 2 unposed superellipses.
+// Apply g.Pose separately, once. g.Palette already includes expression tint.
+```
+
+Each endpoint owns its contour slices. A missing background retains its circle
+path at opacity zero; unused petals have radius zero at the body centre.
+`motion: false` preserves the endpoint's pose and seeded timing data. Geometry
+does not render SVG, interpolate endpoints or evaluate animation frames.
 
 ## Parity contract
 
