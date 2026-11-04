@@ -1,0 +1,9 @@
+{"value":-1.2345,"expected":"-1.234"}
+{"value":-1.23450001,"expected":"-1.235"}
+{"value":-0.0005,"expected":"0"}
+{"value":-0.00050001,"expected":"-0.001"}
+{"value":0,"expected":"0"}
+{"value":0,"expected":"0"}
+{"value":0.0005,"expected":"0.001"}
+{"value":1.2345,"expected":"1.235"}
+{"value":1.23449999,"expected":"1.234"}

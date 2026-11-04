@@ -38,6 +38,33 @@ bun tools/gen-fixtures/compare-layout.ts testdata/layout /tmp/layout-fixtures
 bun test tools/gen-fixtures/compare-layout.test.ts
 ```
 
+### Expression foundation
+
+The internal expression layer covers all 14 frozen poses, static eye baking,
+per-eye transforms (including seesaw phase), pose variables, pose interpolation
+and the four palette tints. Its separate TypeScript oracle, generated from the
+same pinned source, checks 1,152 layout/expression cases, 1,350 interpolations,
+and all 98 expression/state combinations. Eye paths and transform strings are
+byte-exact; fitted eye numbers use absolute ε `1e-9`. Pose values and palette
+hex are exact. CI tolerates numeric differences only in the top-level `eyes`
+outputs of `expressions.jsonl` and `custom.jsonl`. Other numbers, metadata,
+field order, files, strings and interpolation results remain exact; non-finite
+numbers are rejected everywhere. The unchanged geometry fixture also checks
+pose and palette.
+
+G4b remains open until the production Geometry/SVG path uses this layer.
+Geometry must retain unposed eyes plus the separate pose, while static SVG
+bakes the eye channels and wraps only the figure in the body translation.
+Tinting uses the effective palette, including its overrides, and leaves the
+background unchanged. Frame loops and full geometry interpolation are not
+implemented by the pose helpers.
+
+```bash
+bun tools/gen-fixtures/gen-expression.ts /path/to/pinned-beans /tmp/expression-fixtures
+bun tools/gen-fixtures/compare-expression.ts testdata/expressions /tmp/expression-fixtures
+bun test tools/gen-fixtures/compare-expression.test.ts
+```
+
 ## Parity contract
 
 | Surface | Tolerance |

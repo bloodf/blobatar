@@ -122,8 +122,8 @@ jobs:
         with:
           bun-version: ${{ steps.source.outputs.bun }}
 
-      - name: Test layout fixture comparison
-        run: bun test tools/gen-fixtures/compare-layout.test.ts
+      - name: Test layout and expression fixture comparisons
+        run: bun test tools/gen-fixtures/compare-layout.test.ts tools/gen-fixtures/compare-expression.test.ts
 
       - name: Regenerate and compare
         shell: bash
@@ -143,3 +143,5 @@ jobs:
           diff -ru testdata/contour /tmp/regen/contour
           bun tools/gen-fixtures/gen-layout.ts "$PWD/beans" /tmp/regen/layout
           bun tools/gen-fixtures/compare-layout.ts testdata/layout /tmp/regen/layout
+          bun tools/gen-fixtures/gen-expression.ts "$PWD/beans" /tmp/regen/expressions
+          bun tools/gen-fixtures/compare-expression.ts testdata/expressions /tmp/regen/expressions
