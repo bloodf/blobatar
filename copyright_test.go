@@ -10,6 +10,11 @@ import (
 // Exact MIT headers required on every Go file ported from Alain00/blobatar.
 // NOTICE keeps the full MIT text; the repo LICENSE remains GPL-3.0.
 var expectedMITHeaders = map[string]string{
+	"layout.go": `// Copyright (c) 2026 Alain
+//
+// Ported from Alain00/blobatar (vendor/core/styles/compose.ts and shapes.ts),
+// MIT License. See NOTICE for the full license text.
+`,
 	"hash.go": `// Copyright (c) 2026 Alain
 //
 // Ported from Alain00/blobatar (vendor/core/hash.ts), MIT License.

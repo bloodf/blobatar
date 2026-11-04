@@ -138,3 +138,5 @@ jobs:
           cmp looks.json testdata/golden/looks.json
           bun tools/gen-fixtures/gen-contour.ts "$PWD/beans" /tmp/regen/contour
           diff -ru testdata/contour /tmp/regen/contour
+          bun tools/gen-fixtures/gen-layout.ts "$PWD/beans" /tmp/regen/layout
+          diff -ru testdata/layout /tmp/regen/layout

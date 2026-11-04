@@ -272,7 +272,10 @@ func SeedPalette(seed string) (hue, tone float64, toneName string, p Palette, er
 
 // shapeForSeed returns the silhouette name the gen2 band table assigns to seed.
 func shapeForSeed(seed string) string {
-	v := Traits(seed).Float("shape")
+	return shapeForValue(Traits(seed).Float("shape"))
+}
+
+func shapeForValue(v float64) string {
 	for _, b := range shapeBands {
 		if v < b.upper {
 			return b.name
