@@ -21,8 +21,11 @@ regions, decorations, fitted eyes, and byte-exact core and eye paths.
 `testdata/layout/layout.jsonl` is a separate TypeScript oracle generated from
 the same Beans SHA and Bun version in `testdata/golden/SOURCE`; it covers the
 1,000-seed corpus, every shape-band boundary, extreme trait overrides, and
-candidate-list overrides. Numeric layout fields use absolute ε `1e-9`; path
-strings are byte-exact. CI regenerates and compares this oracle.
+candidate-list overrides. Numeric layout fields under `expected` use absolute
+ε `1e-9`; path strings, metadata and overrides are exact. CI regenerates and
+compares the complete oracle, including fields and ordering, and rejects
+non-finite numbers. This allows platform-level floating-point differences
+without changing the committed fixtures or weakening path parity.
 
 The layout-to-contour tests also check core, extra, petals and eyes against all
 1,049 rows of the original `geometry.jsonl`, without modifying that fixture.
@@ -31,7 +34,8 @@ assembly, SVG renderer, Frame and Lerp remain to be implemented.
 
 ```bash
 bun tools/gen-fixtures/gen-layout.ts /path/to/pinned-beans /tmp/layout-fixtures
-diff -ru testdata/layout /tmp/layout-fixtures
+bun tools/gen-fixtures/compare-layout.ts testdata/layout /tmp/layout-fixtures
+bun test tools/gen-fixtures/compare-layout.test.ts
 ```
 
 ## Parity contract
