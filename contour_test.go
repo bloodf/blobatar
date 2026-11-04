@@ -43,13 +43,13 @@ func TestContourMatchesBeans(t *testing.T) {
 			t.Fatalf("segments: %d != %d", len(got.Segments), len(c.Expected.Segments))
 		}
 		for i := range got.Start {
-			if math.Abs(got.Start[i]-c.Expected.Start[i]) > 1e-9 {
+			if !(math.Abs(got.Start[i]-c.Expected.Start[i]) <= 1e-9) {
 				t.Fatalf("start mismatch %v != %v", got.Start, c.Expected.Start)
 			}
 		}
 		for i := range got.Segments {
 			for j := range got.Segments[i] {
-				if math.Abs(got.Segments[i][j]-c.Expected.Segments[i][j]) > 1e-9 {
+				if !(math.Abs(got.Segments[i][j]-c.Expected.Segments[i][j]) <= 1e-9) {
 					t.Fatalf("path %q segment %d coordinate %d: %v != %v", c.Path, i, j, got.Segments[i][j], c.Expected.Segments[i][j])
 				}
 			}
